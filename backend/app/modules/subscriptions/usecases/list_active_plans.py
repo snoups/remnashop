@@ -35,6 +35,8 @@ def _to_catalog_plan(plan: PlanDto, rates: CurrencyRateTable, now: datetime) -> 
         device_limit=plan.device_limit,
         is_trial=plan.is_trial,
         order_index=plan.order_index,
+        icon_emoji_id=plan.icon_emoji_id,
+        icon_emoji_fallback=plan.icon_emoji_fallback,
         durations=[
             CatalogDurationDto(
                 days=duration.days,

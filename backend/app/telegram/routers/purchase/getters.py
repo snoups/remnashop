@@ -1,3 +1,4 @@
+import html
 from decimal import Decimal
 from typing import Any, Optional
 
@@ -64,12 +65,27 @@ async def _renewed(
     return next((s for s in owned if s.id == target_id), None)
 
 
+def _plan_title(name: str, icon_id: Optional[str], fallback: Optional[str]) -> TrustedHtml:
+    """The plan's name behind its icon: the custom emoji, its glyph where it can't render."""
+    escaped = html.escape(name)
+    if icon_id:
+        glyph = html.escape(fallback or "•")
+        return TrustedHtml(
+            f'<tg-emoji emoji-id="{html.escape(icon_id)}">{glyph}</tg-emoji> {escaped}'
+        )
+    return TrustedHtml(f"{html.escape(fallback)} {escaped}" if fallback else escaped)
+
+
+def _catalog_plan_title(plan: CatalogPlanDto) -> TrustedHtml:
+    return _plan_title(plan.name, plan.icon_emoji_id, plan.icon_emoji_fallback)
+
+
 def _plan_details(runner: TranslatorRunner, plan: CatalogPlanDto, period: str = "") -> TrustedHtml:
     return TrustedHtml(
         render_window_text(
             runner,
             "frg-purchase-plan",
-            plan_name=plan.name,
+            plan_name=_catalog_plan_title(plan),
             # its own blank line after it, gone with it when there is none
             description=f"{plan.description}\n" if plan.description else "",
             traffic_limit=plan.traffic_limit,
@@ -137,7 +153,11 @@ async def plan_getter(
         "plans": [
             {
                 "id": plan.id,
-                "label": plan.name,
+                # a custom emoji goes into the button's icon; a bare glyph has nowhere else to go
+                "label": f"{plan.icon_emoji_fallback} {plan.name}"
+                if plan.icon_emoji_fallback and not plan.icon_emoji_id
+                else plan.name,
+                "icon_id": plan.icon_emoji_id,
                 "badge": plan.badge.value if plan.badge is not None else "",
             }
             for plan in plans
@@ -276,7 +296,9 @@ async def confirm_getter(
             runner,
             "msg-purchase-confirm",
             purchase_type=purchase_type.value,
-            plan_name=data["plan_name"],
+            plan_name=_plan_title(
+                data["plan_name"], data.get("plan_icon_id"), data.get("plan_icon_fallback")
+            ),
             traffic_limit=traffic_limit,
             device_limit=device_limit,
             period=format_period(runner, data["duration_days"]),
@@ -331,7 +353,9 @@ async def link_choice_getter(
         if plan is not None and s.plan_snapshot.plan_id == plan.id
     ]
     return {
-        "window_text": render_window_text(runner, "msg-purchase-link-choice", plan_name=plan.name)
+        "window_text": render_window_text(
+            runner, "msg-purchase-link-choice", plan_name=_catalog_plan_title(plan)
+        )
         if plan is not None
         else render_window_text(runner, "msg-window-gone"),
         "subscriptions": [

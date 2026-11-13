@@ -1,7 +1,6 @@
 from typing import Any, Awaitable, Callable, Final, Optional, TypeAlias
 
 from aiogram_dialog import DialogManager
-from aiogram_dialog.api.entities import MediaAttachment
 from dishka import FromDishka
 from dishka.integrations.aiogram_dialog import inject
 from fluentogram import TranslatorHub
@@ -22,7 +21,7 @@ from app.modules.subscriptions import (
     SubscriptionRefDto,
 )
 from app.modules.users import UserDto
-from app.telegram.banners import get_banner_media
+from app.telegram.banners import window_banner
 from app.telegram.dialogs.config_cache import DialogConfigCache
 from app.telegram.dialogs.context import build_condition_data, menu_flags, selected_subscription_id
 from app.telegram.dialogs.rendering import (
@@ -40,19 +39,6 @@ _KNOWN_PLATFORMS: Final[frozenset[str]] = frozenset({"ios", "android", "windows"
 def _platform_icon_key(platform: Optional[str]) -> str:
     normalized = (platform or "default").lower()
     return normalized if normalized in _KNOWN_PLATFORMS else "default"
-
-
-async def _window_banner(
-    key: str,
-    dialog_config_cache: DialogConfigCache,
-    get_banner: GetBannerForDisplayUseCase,
-    config: AppConfig,
-    user: UserDto,
-) -> Optional[MediaAttachment]:
-    window = await dialog_config_cache.get_window(key)
-    if not window.banner_name:
-        return None
-    return await get_banner_media(get_banner, config, user, window.banner_name)
 
 
 @inject
@@ -85,7 +71,7 @@ async def subscriptions_list_getter(
         single_subscription=single_subscription,
         owned_count=len(subscriptions),
     )
-    data["banner"] = await _window_banner(
+    data["banner"] = await window_banner(
         "subscriptions.list", dialog_config_cache, get_banner, config, user
     )
     data["subscriptions"] = [
@@ -129,7 +115,7 @@ async def subscription_card_getter(
         cabinet_url=config.cabinet.url,
         selected_id=selected_subscription_id(dialog_manager),
     )
-    data["banner"] = await _window_banner(
+    data["banner"] = await window_banner(
         "subscriptions.card", dialog_config_cache, get_banner, config, user
     )
     subscription: Optional[SubscriptionDto] = data["subscription"]

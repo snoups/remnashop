@@ -216,6 +216,8 @@ async def select_duration(
     data.pop(PAYMENT_URL_KEY, None)
     data["duration_days"] = days
     data["plan_name"] = plan.name
+    data["plan_icon_id"] = plan.icon_emoji_id
+    data["plan_icon_fallback"] = plan.icon_emoji_fallback
     # what checkout charges, and the price before discounts beside it
     data["prices"] = {c.value: str(q.final_price) for c, q in quotes.items()}
     data["base_prices"] = {c.value: str(q.base_price) for c, q in quotes.items()}

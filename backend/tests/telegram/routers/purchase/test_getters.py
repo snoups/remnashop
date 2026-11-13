@@ -1,3 +1,4 @@
+from dataclasses import replace
 from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -11,6 +12,7 @@ from app.core.exceptions import ValidationError
 from app.modules.subscriptions import PlanCatalogDto
 from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY
 from app.telegram.routers.purchase.getters import (
+    _plan_title,
     confirm_getter,
     duration_getter,
     method_getter,
@@ -45,7 +47,7 @@ async def test_plan_list_hides_the_current_plan_on_change() -> None:
         i18n=_i18n(),
     )
 
-    assert data["plans"] == [{"id": 11, "label": "Plan 11", "badge": ""}]
+    assert data["plans"] == [{"id": 11, "label": "Plan 11", "icon_id": None, "badge": ""}]
 
 
 def _quote(price: str, percent: int = 0, source: DiscountSource = DiscountSource.NONE) -> AsyncMock:
@@ -234,3 +236,28 @@ async def test_confirm_of_a_change_warns_about_the_replacement() -> None:
 
     assert "frg-purchase-type-notice{'purchase_type': 'CHANGE'}" in data["window_text"]
     assert data["back_text"].endswith(" btn-purchase.back-duration")
+
+
+async def test_plan_buttons_carry_the_custom_emoji_or_lead_with_the_glyph() -> None:
+    with_emoji = replace(
+        _plan(id=10), icon_emoji_id="5429613693287578957", icon_emoji_fallback="📦"
+    )
+    glyph_only = replace(_plan(id=11), icon_emoji_fallback="⭐")
+    catalog = PlanCatalogDto(plans=[with_emoji, glyph_only], anchor_currency=Currency.RUB)
+
+    data = await plan_getter.__dishka_orig_func__(
+        _manager({"purchase_type": "NEW"}),
+        list_active_plans=AsyncMock(return_value=catalog),
+        i18n=_i18n(),
+    )
+
+    assert data["plans"] == [
+        {"id": 10, "label": "Plan 10", "icon_id": "5429613693287578957", "badge": ""},
+        {"id": 11, "label": "⭐ Plan 11", "icon_id": None, "badge": ""},
+    ]
+
+
+def test_plan_title_renders_the_icon_before_an_escaped_name() -> None:
+    assert _plan_title("A<B", "123", "📦") == '<tg-emoji emoji-id="123">📦</tg-emoji> A&lt;B'
+    assert _plan_title("A<B", None, "⭐") == "⭐ A&lt;B"
+    assert _plan_title("A<B", None, None) == "A&lt;B"

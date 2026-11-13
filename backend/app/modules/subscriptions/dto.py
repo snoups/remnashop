@@ -527,6 +527,9 @@ class CatalogPlanDto:
     # the plan's promotion running now: 0 and None while there is none
     discount_percent: int = 0
     discount_ends_at: Optional[datetime] = None
+    # a custom emoji, and the plain glyph shown where it can't render
+    icon_emoji_id: Optional[str] = None
+    icon_emoji_fallback: Optional[str] = None
 
 
 @dataclass(frozen=True, kw_only=True)
