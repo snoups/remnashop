@@ -26,6 +26,8 @@ SHORT_RETENTION_EVENT_TYPES: Final[frozenset[str]] = frozenset(
         "SubscriptionTrafficResetEvent",
         "SubscriptionTrafficThresholdEvent",
         "TorrentBlockerReportEvent",
+        # one per customer sign-in; new-device sign-ins are kept
+        "CabinetSignedInEvent",
         # infrastructure
         "BackupCompletedEvent",
         "BackupFailedEvent",
