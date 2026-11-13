@@ -83,6 +83,11 @@ function LegalDocumentDialogBody({ document, locales, canUpdate, canSet, canRemo
   const isFilled = (code: string) =>
     document.texts.some((item) => item.locale === code && (item.channel === null || item.channel === channel)) ||
     pending.some((entry) => entry.code === code && (entry.target === null || entry.target === channel));
+  // a template counts too: saving with the switch on stores it as the common text
+  const canShow = (target: LegalChannel) =>
+    hasTextFor(document, target) ||
+    pending.some((entry) => entry.target === null || entry.target === target) ||
+    (canSet && document.templates.length > 0);
   const template = slot.template;
   const canInsertTemplate =
     canSet && !!template && (value.title !== template.title || value.body !== template.body);
@@ -96,6 +101,20 @@ function LegalDocumentDialogBody({ document, locales, canUpdate, canSet, canRemo
   const save = async () => {
     setBusy(true);
     try {
+      const turnedOn =
+        (visibility.show_in_bot && !hasTextFor(document, "BOT")) ||
+        (visibility.show_in_cabinet && !hasTextFor(document, "CABINET"));
+      const templateFills = turnedOn
+        ? document.templates.filter(
+            ({ locale: code }) =>
+              locales.includes(code) &&
+              !document.texts.some((item) => item.locale === code && item.channel === null) &&
+              !pending.some((entry) => entry.code === code && entry.target === null),
+          )
+        : [];
+      for (const { locale: code, title, body } of templateFills) {
+        await setLegalText(document.kind, code, null, { title, body, requires_reacceptance: false });
+      }
       if (visibilityChanged) await updateLegalDocument(document.kind, visibility);
       for (const { code, target, item, itemSlot } of pending) {
         await setLegalText(document.kind, code, target, {
@@ -176,17 +195,16 @@ function LegalDocumentDialogBody({ document, locales, canUpdate, canSet, canRemo
                 <ToggleCapsule
                   icon={Bot}
                   label={t("settings.legal.tabs.BOT")}
-                  // a channel with no text of its own nor a common one has nothing to show
-                  checked={visibility.show_in_bot && hasTextFor(document, "BOT")}
+                  checked={visibility.show_in_bot && canShow("BOT")}
                   onChange={(show_in_bot) => setVisibility((prev) => ({ ...prev, show_in_bot }))}
-                  disabled={!canUpdate || busy || !hasTextFor(document, "BOT")}
+                  disabled={!canUpdate || busy || !canShow("BOT")}
                 />
                 <ToggleCapsule
                   icon={Globe}
                   label={t("settings.legal.tabs.CABINET")}
-                  checked={visibility.show_in_cabinet && hasTextFor(document, "CABINET")}
+                  checked={visibility.show_in_cabinet && canShow("CABINET")}
                   onChange={(show_in_cabinet) => setVisibility((prev) => ({ ...prev, show_in_cabinet }))}
-                  disabled={!canUpdate || busy || !hasTextFor(document, "CABINET")}
+                  disabled={!canUpdate || busy || !canShow("CABINET")}
                 />
               </div>
             </Field>
