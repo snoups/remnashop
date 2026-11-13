@@ -76,6 +76,29 @@ def test_renders_variables_and_buttons() -> None:
     assert rows[2][0] == {"text": "Menu", "callback_data": "bc:menu"}
 
 
+def test_button_icon_goes_to_icon_custom_emoji_id() -> None:
+    broadcast = _broadcast(
+        buttons=[
+            BroadcastButtonDto(
+                kind=BroadcastButtonKind.URL,
+                url="https://x.y",
+                icon_custom_emoji_id="5368324170671202286",
+            ),
+            BroadcastButtonDto(kind=BroadcastButtonKind.PROMOCODE),
+            BroadcastButtonDto(kind=BroadcastButtonKind.MENU),
+        ]
+    )
+    rows = (
+        BroadcastRenderer(broadcast, promocode_code="SALE").render(_ctx(), NOW).reply_markup or {}
+    )["inline_keyboard"]
+    assert rows[0][0] == {
+        "text": "Site",
+        "url": "https://x.y",
+        "icon_custom_emoji_id": "5368324170671202286",
+    }
+    assert "icon_custom_emoji_id" not in rows[1][0]
+
+
 def test_locale_variant_and_fallback() -> None:
     renderer = BroadcastRenderer(_broadcast(), promocode_code="SALE")
     assert renderer.render(_ctx(Locale.RU), NOW).text == "Привет, Ann"

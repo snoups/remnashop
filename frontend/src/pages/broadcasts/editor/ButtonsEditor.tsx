@@ -3,7 +3,10 @@ import type { ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { BroadcastButtonKind } from "@entities/broadcasts/api";
+import { EmojiPicker } from "@entities/emoji-packs/EmojiPicker";
+import type { PickedEmoji } from "@entities/emoji-packs/EmojiPicker";
 import type { Promocode } from "@entities/promocodes/api";
+import { EmojiThumbnail } from "@features/dialog-canvas-editor/EmojiThumbnail";
 import { ActionMenu } from "@shared/ui/ActionMenu";
 import { EmptyState } from "@shared/ui/glass/EmptyState";
 import { Field } from "@shared/ui/glass/Field";
@@ -13,7 +16,7 @@ import { Section, SectionRows } from "@shared/ui/glass/Section";
 import { IconButton } from "@shared/ui/IconButton";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 
-import { addButton, removeButton, setButtonLabel, setButtonUrl } from "@pages/broadcasts/editor/form";
+import { addButton, removeButton, setButtonIcon, setButtonLabel, setButtonUrl } from "@pages/broadcasts/editor/form";
 import type { EditorForm } from "@pages/broadcasts/editor/form";
 
 const MAX_BUTTONS = 10;
@@ -71,6 +74,14 @@ export function ButtonsEditor({
       onChange={(value) => onChange({ ...form, promocode_id: value ? Number(value) : null })}
     />
   );
+
+  // a pack emoji is the button's icon on every locale; a standard one goes into this locale's text
+  const pickIcon = (index: number, picked: PickedEmoji) =>
+    onChange(
+      "glyph" in picked
+        ? setButtonLabel(form, activeLocale, index, `${picked.glyph} ${labels[index] ?? ""}`.trim())
+        : setButtonIcon(form, index, picked.customEmojiId),
+    );
 
   const target = (index: number) => {
     const button = form.buttons[index];
@@ -133,6 +144,18 @@ export function ButtonsEditor({
                 placeholder={t("broadcasts.editor.buttons.label")}
                 onChange={(event) => onChange(setButtonLabel(form, activeLocale, index, event.target.value))}
                 className="w-full"
+                end={
+                  <EmojiPicker
+                    current={
+                      button.icon_custom_emoji_id ? (
+                        <EmojiThumbnail glyph="" customEmojiId={button.icon_custom_emoji_id} />
+                      ) : null
+                    }
+                    disabled={disabled}
+                    onPick={(picked) => pickIcon(index, picked)}
+                    onClear={() => onChange(setButtonIcon(form, index, null))}
+                  />
+                }
               />
               {target(index)}
               <IconButton size="8" tone="danger" disabled={disabled} onClick={() => onChange(removeButton(form, index))}>

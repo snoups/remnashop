@@ -75,7 +75,7 @@ export function addButton(f: EditorForm, kind: BroadcastButtonKind): EditorForm 
   const contents = Object.fromEntries(
     Object.entries(f.contents).map(([locale, c]) => [locale, { ...c, button_labels: [...c.button_labels, ""] }]),
   );
-  return { ...f, buttons: [...f.buttons, { kind, url: kind === "URL" ? "" : null }], contents };
+  return { ...f, buttons: [...f.buttons, { kind, url: kind === "URL" ? "" : null, icon_custom_emoji_id: null }], contents };
 }
 
 export function removeButton(f: EditorForm, index: number): EditorForm {
@@ -101,6 +101,10 @@ export function setEmailSubject(f: EditorForm, locale: string, subject: string):
 
 export function setEmailHtml(f: EditorForm, locale: string, html: string): EditorForm {
   return { ...f, email_contents: { ...f.email_contents, [locale]: { ...emailContent(f, locale), html } } };
+}
+
+export function setButtonIcon(f: EditorForm, index: number, iconId: string | null): EditorForm {
+  return { ...f, buttons: f.buttons.map((b, i) => (i === index ? { ...b, icon_custom_emoji_id: iconId } : b)) };
 }
 
 export function setButtonLabel(f: EditorForm, locale: string, index: number, label: string): EditorForm {
