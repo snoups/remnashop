@@ -17,18 +17,36 @@ interface PremiumEmojiProps {
   size: number;
 }
 
-/** Telegram's artwork: a lottie animation or a .webm, the static thumbnail
- * while it loads (or for a pack imported before animations were stored), and
- * the plain glyph as the last resort. Every emoji in an open pack animates at
- * once, as in Telegram; pause off-screen ones if a large pack stutters. */
+// an animation starts a little before its cell scrolls into view
+const IN_VIEW_MARGIN = "64px";
+
+/** Telegram's artwork: a lottie animation or a .webm while on screen, the
+ * static thumbnail off screen, while it loads, or for a pack imported before
+ * animations were stored, and the plain glyph as the last resort. A pack holds
+ * up to a thousand emoji: animating them all at once stalls the page. */
 export function PremiumEmoji({ item, size }: PremiumEmojiProps) {
   const [failed, setFailed] = useState(false);
+  const [inView, setInView] = useState(false);
+  const [animationReady, setAnimationReady] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
   const container = useRef<HTMLDivElement>(null);
   const isLottie = item?.animation_kind === "lottie";
+  const isAnimated = isLottie || item?.animation_kind === "video";
   const emojiId = item?.custom_emoji_id;
 
   useEffect(() => {
-    if (!emojiId || !isLottie || container.current === null) return;
+    if (!isAnimated || box.current === null) return;
+    // the observer honours overflow clipping, so a cell scrolled out of a
+    // popover or dialog counts as hidden
+    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), {
+      rootMargin: IN_VIEW_MARGIN,
+    });
+    observer.observe(box.current);
+    return () => observer.disconnect();
+  }, [isAnimated]);
+
+  useEffect(() => {
+    if (!emojiId || !isLottie || !inView || container.current === null) return;
     const animation = lottie.loadAnimation({
       container: container.current,
       renderer: "canvas",
@@ -43,31 +61,20 @@ export function PremiumEmoji({ item, size }: PremiumEmojiProps) {
     // renderer's "same frame" skip never fires and a 30fps animation redraws
     // at 120Hz
     animation.setSubframe(false);
-    return () => animation.destroy();
-  }, [isLottie, emojiId]);
+    animation.addEventListener("DOMLoaded", () => setAnimationReady(true));
+    return () => {
+      animation.destroy();
+      setAnimationReady(false);
+    };
+  }, [isLottie, emojiId, inView]);
 
   if (!item) return <Smile className="text-muted-foreground" style={{ width: size, height: size }} />;
   const lucide = LUCIDE_PACK_ICONS[item.custom_emoji_id];
   if (lucide) return <Icon iconNode={lucide.node} size={size} color="white" />;
-  if (isLottie) return <div ref={container} style={{ width: size, height: size }} />;
 
-  if (item.animation_kind === "video") {
-    return (
-      <video
-        src={emojiAnimationUrl(item.custom_emoji_id)}
-        autoPlay
-        loop
-        muted
-        playsInline
-        width={size}
-        height={size}
-        className="object-contain"
-      />
-    );
-  }
-
-  if (failed) return <>{item.fallback_emoji}</>;
-  return (
+  const thumbnail = failed ? (
+    <>{item.fallback_emoji}</>
+  ) : (
     <img
       src={emojiThumbnailUrl(item.custom_emoji_id)}
       alt={item.fallback_emoji}
@@ -78,5 +85,27 @@ export function PremiumEmoji({ item, size }: PremiumEmojiProps) {
       height={size}
       className="object-contain"
     />
+  );
+  if (!isAnimated) return thumbnail;
+
+  return (
+    <div ref={box} className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      {/* lottie empties its container on destroy: it gets one React never renders into */}
+      {isLottie && <div ref={container} className="absolute inset-0" />}
+      {!isLottie && inView ? (
+        <video
+          src={emojiAnimationUrl(item.custom_emoji_id)}
+          autoPlay
+          loop
+          muted
+          playsInline
+          width={size}
+          height={size}
+          className="object-contain"
+        />
+      ) : (
+        !animationReady && thumbnail
+      )}
+    </div>
   );
 }
