@@ -421,3 +421,81 @@ async def test_a_subscription_made_unlimited_by_hand_changes_to_finite_without_c
 
     assert changed.plan_snapshot.credit_days == 30
     assert changed.expire_at - datetime_now() < timedelta(days=30, minutes=1)
+
+
+async def test_a_free_unlimited_to_unlimited_change_keeps_the_traffic_counter(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    # the credit covered it all: back and forth between two plans must not buy a reset
+    buyer = await user_repository.create(CreateUserDto(name="loop", telegram_id=91011))
+    dear = await _plan(plan_repository, "loop-dear-forever")
+    cheap = await _plan(plan_repository, "loop-cheap-forever")
+    use_case = _use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    forever = await _buy(use_case, buyer, dear, days=0, paid="5000")
+    remnawave_store[forever.remnawave_user_id]["userTraffic"]["usedTrafficBytes"] = 777
+
+    await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                cheap, price_paid=Decimal("0"), currency=Currency.RUB, duration_days=0
+            ),
+            duration_days=0,
+            price_paid=Decimal("0"),
+            base_price=Decimal("4000"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.CHANGE,
+            target_subscription_id=forever.id,
+            reset_traffic=True,
+        ),
+    )
+
+    assert remnawave_store[forever.remnawave_user_id]["userTraffic"]["usedTrafficBytes"] == 777
+
+
+async def test_renewing_an_unlimited_turned_finite_does_not_unlock_its_payment(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    # unlimited → finite is no credit; a cheap renewal must not turn the
+    # unlimited payment into a per-day rate
+    buyer = await user_repository.create(CreateUserDto(name="finite", telegram_id=91012))
+    plan = await _plan(plan_repository, "forever-made-finite")
+    use_case = _use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    forever = await _buy(use_case, buyer, plan, days=0, paid="5000")
+    finite = datetime_now() + timedelta(days=10)
+    await subscription_repository.update(
+        UpdateSubscriptionDto(subscription_id=forever.id, expire_at=finite)
+    )
+    remnawave_store[forever.remnawave_user_id]["expireAt"] = finite.isoformat()
+
+    renewed = await _buy(
+        use_case,
+        buyer,
+        plan,
+        days=30,
+        paid="500",
+        purchase_type=PurchaseType.RENEW,
+        target_subscription_id=forever.id,
+    )
+
+    assert renewed.plan_snapshot.credit_paid == Decimal("500")
+    assert renewed.plan_snapshot.credit_days == 30

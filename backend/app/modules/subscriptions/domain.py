@@ -145,9 +145,11 @@ class SubscriptionState:
                     unlimited_from_credit_days=snap.effective_credit_days,
                 ),
             )
-        # a lapsed term's money was used up; the new term starts its own credit
-        base_paid = ZERO_AMOUNT if restart else snap.effective_credit_paid
-        base_days = 0 if restart else snap.effective_credit_days
+        # a lapsed term's money was used up, and an unlimited one's isn't prorated
+        # by days: the new term starts its own credit
+        fresh = restart or snap.effective_credit_days == 0
+        base_paid = ZERO_AMOUNT if fresh else snap.effective_credit_paid
+        base_days = 0 if fresh else snap.effective_credit_days
         return replace(
             self,
             plan_snapshot=replace(snap, credit_paid=base_paid + paid, credit_days=base_days + days),

@@ -154,6 +154,9 @@ class ChangePurchase:
                 await self._remnawave_sdk.users.update_user(restore(old))
             raise
 
+        if data.duration_days == 0 and old.is_unlimited and data.price_paid == ZERO_AMOUNT:
+            # the credit paid for it all: switching back and forth mustn't buy a reset
+            data = replace(data, reset_traffic=False)
         updated = await reset_traffic_if_paid(
             self._remnawave_sdk, self._subscription_repository, self._uow, data, updated
         )

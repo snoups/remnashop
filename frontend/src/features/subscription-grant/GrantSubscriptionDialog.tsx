@@ -58,7 +58,7 @@ function GrantSubscriptionBody({ plans, userId, onGranted }: Omit<GrantSubscript
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     const days = durationDays(duration);
-    if (planId === null || !days) {
+    if (planId === null || days === null || days === undefined) {
       toast.error(t("errors.invalidNumber"));
       return;
     }
