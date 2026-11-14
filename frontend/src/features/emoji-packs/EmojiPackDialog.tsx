@@ -62,7 +62,7 @@ function EmojiPackDialogBody({ pack }: Pick<EmojiPackDialogProps, "pack">) {
                   <Check className="size-3.5" />
                 </span>
               ) : (
-                <PremiumEmoji item={item} size={32} />
+                <PremiumEmoji item={item} size={32} still />
               )}
             </Pressable>
           ))}
