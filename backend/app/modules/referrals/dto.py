@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Final, Optional
 
-from app.core.constants import DEFAULT_PAGE_SIZE, ZERO_AMOUNT
+from app.core.constants import DEFAULT_PAGE_SIZE, DEFAULT_UNLIMITED_REWARD_DAYS, ZERO_AMOUNT
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import (
     Currency,
@@ -48,6 +48,8 @@ class ReferralSettingsDto(BaseDto, TimestampMixin):
     reward_amounts: dict[int, Decimal] = field(default_factory=lambda: dict(DEFAULT_REWARD_AMOUNTS))
     # EXTRA_DAYS only: no days for someone who never paid for a subscription
     days_require_paid_subscription: bool = True
+    # EXTRA_DAYS + PERCENT: the days an unlimited purchase counts as
+    unlimited_reward_days: int = DEFAULT_UNLIMITED_REWARD_DAYS
     # what a user registering through a link gets; 0 = nothing
     invitee_reward_type: ReferralRewardType = ReferralRewardType.EXTRA_DAYS
     invitee_reward_amount: int = 0
@@ -106,6 +108,7 @@ class UpdateReferralSettingsDto:
     reward_strategy: Optional[ReferralRewardStrategy] = None
     reward_amounts: Optional[dict[int, Decimal]] = None
     days_require_paid_subscription: Optional[bool] = None
+    unlimited_reward_days: Optional[int] = None
     invitee_reward_type: Optional[ReferralRewardType] = None
     invitee_reward_amount: Optional[int] = None
 

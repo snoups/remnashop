@@ -98,6 +98,7 @@ class ReferralRepository:
                 **{int(k): Decimal(str(v)) for k, v in row.reward_amounts.items()},
             },
             days_require_paid_subscription=row.days_require_paid_subscription,
+            unlimited_reward_days=row.unlimited_reward_days,
             invitee_reward_type=row.invitee_reward_type,
             invitee_reward_amount=row.invitee_reward_amount,
             created_at=row.created_at,

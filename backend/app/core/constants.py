@@ -195,3 +195,6 @@ EMAIL_PATTERN: Final[str] = r'^[^@\s(),<>;:"?]+@[^@\s(),<>;:"?]+$'
 # id wins.
 ICON_KEY_SUFFIX: Final[str] = "-icon"
 ICON_ID_KEY_SUFFIX: Final[str] = "-icon-id"
+
+# an unlimited purchase as days, for a percent-of-days referral reward
+DEFAULT_UNLIMITED_REWARD_DAYS: Final[int] = 365

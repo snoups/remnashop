@@ -25,6 +25,7 @@ class ReferralSettingsResponse(BaseModel):
     reward_strategy: ReferralRewardStrategy
     reward_amounts: dict[int, Decimal]
     days_require_paid_subscription: bool
+    unlimited_reward_days: int
     invitee_reward_type: ReferralRewardType
     invitee_reward_amount: int
     anchor_currency: Optional[Currency]
@@ -38,6 +39,7 @@ class UpdateReferralSettingsRequest(BaseModel):
     reward_strategy: Optional[ReferralRewardStrategy] = None
     reward_amounts: Optional[dict[_RewardLevel, _WholeDecimal]] = None
     days_require_paid_subscription: Optional[bool] = None
+    unlimited_reward_days: Optional[int] = Field(default=None, ge=1, le=MAX_BONUS_DAYS)
     invitee_reward_type: Optional[ReferralRewardType] = None
     invitee_reward_amount: Optional[int] = Field(default=None, ge=0, le=MAX_BONUS_DAYS)
 

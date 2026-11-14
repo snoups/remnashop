@@ -4,6 +4,7 @@ from sqlalchemy import Boolean, SmallInteger
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.constants import DEFAULT_UNLIMITED_REWARD_DAYS
 from app.core.db.base import BaseSql
 from app.core.db.timestamp import TimestampMixin
 from app.core.enums import ReferralAccrualStrategy, ReferralRewardStrategy, ReferralRewardType
@@ -28,6 +29,9 @@ class ReferralSettings(BaseSql, TimestampMixin):
     reward_amounts: Mapped[dict[str, Any]] = mapped_column(JSONB(), default=dict)
     days_require_paid_subscription: Mapped[bool] = mapped_column(
         Boolean(), default=True, server_default="true"
+    )
+    unlimited_reward_days: Mapped[int] = mapped_column(
+        default=DEFAULT_UNLIMITED_REWARD_DAYS, server_default=str(DEFAULT_UNLIMITED_REWARD_DAYS)
     )
     invitee_reward_type: Mapped[ReferralRewardType] = mapped_column(
         default=ReferralRewardType.EXTRA_DAYS

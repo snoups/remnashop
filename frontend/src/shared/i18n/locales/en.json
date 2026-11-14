@@ -3127,6 +3127,8 @@
       },
       "daysRequirePaidLabel": "Award days only after the first payment",
       "daysRequirePaidHint": "Days aren’t credited to someone who has never paid for a subscription.",
+      "unlimitedRewardDaysLabel": "Unlimited counts as",
+      "unlimitedRewardDaysHint": "A percent of days needs a number of days: a purchase of an unlimited subscription counts as this many.",
       "invitee": {
         "title": "Invited user reward",
         "description": {

@@ -215,6 +215,27 @@ async def test_days_require_paid_subscription_defaults_on_and_roundtrips(
     assert reset.json()["days_require_paid_subscription"] is True
 
 
+async def test_unlimited_reward_days_defaults_to_a_year_and_roundtrips(
+    client: httpx.AsyncClient, admin_auth_headers: dict[str, str]
+) -> None:
+    initial = await client.get(f"{API_V1}/referrals/settings", headers=admin_auth_headers)
+    assert initial.json()["unlimited_reward_days"] == 365
+
+    patched = await client.patch(
+        f"{API_V1}/referrals/settings",
+        json={"unlimited_reward_days": 730},
+        headers=admin_auth_headers,
+    )
+    assert patched.json()["unlimited_reward_days"] == 730
+
+    refused = await client.patch(
+        f"{API_V1}/referrals/settings",
+        json={"unlimited_reward_days": 0},
+        headers=admin_auth_headers,
+    )
+    assert refused.status_code == 422
+
+
 async def test_adjust_user_bonus_days_updates_the_stats(
     client: httpx.AsyncClient, admin_auth_headers: dict[str, str], user_id: int
 ) -> None:
