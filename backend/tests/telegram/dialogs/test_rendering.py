@@ -1,4 +1,8 @@
+from unittest.mock import MagicMock
+
 import pytest
+from aiogram_dialog.widgets.kbd import Button
+from aiogram_dialog.widgets.text import Format
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.core.enums import DialogFlow, Locale
@@ -8,10 +12,12 @@ from app.modules.dialogs.repository import DialogRepository
 from app.telegram.dialogs.config_cache import DialogConfigCache
 from app.telegram.dialogs.rendering import (
     UNAVAILABLE_BUTTONS_KEY,
+    LabelIcon,
     TrustedHtml,
     _resolve_variables,
     banner_within_caption,
     fits_caption,
+    label_with_icon,
     render_dialog_buttons,
     render_window_text,
     resolve_variable_kwargs,
@@ -389,3 +395,30 @@ async def test_hides_button_of_an_unavailable_action_despite_its_condition(
     texts = [b["text"] for row in rows for b in row]
     assert "[btn-menu.trial]" not in texts
     assert "[btn-menu.connect]" in texts
+
+
+_CANCEL_FTL = "btn-x =\n    .cancel = Cancel\n    .cancel-icon = ❌\n"
+
+
+def _label_runner(ftl: str):  # type: ignore[no-untyped-def]
+    return build_translator_hub([Locale.EN], {Locale.EN: ftl}, Locale.EN).get_translator_by_locale(
+        "en"
+    )
+
+
+def test_label_with_icon_puts_a_plain_glyph_in_the_text() -> None:
+    label = label_with_icon(_label_runner(_CANCEL_FTL), "btn-x.cancel")
+    assert (label.text, label.icon_custom_emoji_id) == ("❌ Cancel", None)
+
+
+async def test_label_with_icon_sends_a_premium_icon_instead_of_the_glyph() -> None:
+    runner = _label_runner(_CANCEL_FTL + "    .cancel-icon-id = 5368324170671202286\n")
+    data = {"cancel_text": label_with_icon(runner, "btn-x.cancel")}
+    widget = Button(Format("{cancel_text}"), id="cancel", style=LabelIcon("cancel_text"))
+
+    (button,) = (await widget.render_keyboard(data, MagicMock()))[0]
+
+    assert button.text == "Cancel"
+    assert button.icon_custom_emoji_id == "5368324170671202286"
+    plain = data["cancel_text"].inline_button(url="https://example.com")
+    assert (plain.text, plain.icon_custom_emoji_id) == ("Cancel", "5368324170671202286")

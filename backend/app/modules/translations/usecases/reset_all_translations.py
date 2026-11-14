@@ -40,10 +40,8 @@ class ResetAllTranslationsUseCase(UseCase[None, list[TranslationEntryDto]]):
                 TranslationChangedEvent(actor=actor, action="reset_all")
             )
 
-        for entry in reset:
-            await self._bot_signals.translation_changed(
-                entry.locale, entry.message_id, entry.attribute_id, entry.value
-            )
+        # one full reload instead of a signal per key
+        await self._bot_signals.dialogs_changed()
 
         await self._bot_commands.push()
         return reset

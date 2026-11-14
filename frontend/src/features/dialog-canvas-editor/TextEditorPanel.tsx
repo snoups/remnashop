@@ -17,6 +17,13 @@ import { Button } from "@shared/ui/Button";
 import { TEXT_TOOLBAR_CLASS, TEXT_TOOLBAR_DIVIDER_CLASS } from "@shared/ui/classes";
 import { Input } from "@shared/ui/glass/Input";
 
+export type SaveText = (
+  locale: string,
+  messageId: string,
+  attributeId: string,
+  value: string,
+) => Promise<{ locale: string; message_id: string; value: string; default_value: string }>;
+
 interface TextEditorPanelProps {
   textKey: string;
   entries: TranslationEntry[];
@@ -43,12 +50,7 @@ interface TextEditorPanelProps {
   /** Dialog texts go through the dialogs endpoint, which allows newlines and
    * rejects keys outside the catalog; everything else goes through the general
    * translations one. */
-  save?: (
-    locale: string,
-    messageId: string,
-    attributeId: string,
-    value: string,
-  ) => Promise<{ locale: string; message_id: string; value: string; default_value: string }>;
+  save?: SaveText;
   onSaved: (entry: TranslationEntry) => void;
 }
 

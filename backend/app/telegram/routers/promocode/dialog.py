@@ -4,6 +4,7 @@ from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Cancel, ListGroup, Row, SwitchTo
 from aiogram_dialog.widgets.text import Format
 
+from app.telegram.dialogs.rendering import LabelIcon
 from app.telegram.routers.promocode.getters import (
     promocode_confirm_getter,
     promocode_input_getter,
@@ -20,7 +21,7 @@ promocode_input = Window(
     Format("{input_message}"),
     MessageInput(on_promocode_input),
     Row(
-        Cancel(Format("{cancel_text}"), id="cancel"),
+        Cancel(Format("{cancel_text}"), style=LabelIcon("cancel_text"), id="cancel"),
     ),
     parse_mode=ParseMode.HTML,
     state=Promocode.INPUT,
@@ -40,7 +41,12 @@ promocode_target = Window(
         items="subscriptions",
     ),
     Row(
-        SwitchTo(text=Format("{cancel_text}"), id="cancel", state=Promocode.INPUT),
+        SwitchTo(
+            text=Format("{cancel_text}"),
+            style=LabelIcon("cancel_text"),
+            id="cancel",
+            state=Promocode.INPUT,
+        ),
     ),
     parse_mode=ParseMode.HTML,
     state=Promocode.TARGET,
@@ -51,8 +57,18 @@ promocode_confirm = Window(
     Format("{confirm_message}"),
     Format("{will_replace_message}"),
     Row(
-        Button(text=Format("{confirm_text}"), id="confirm", on_click=on_promocode_confirm),
-        SwitchTo(text=Format("{cancel_text}"), id="cancel", state=Promocode.INPUT),
+        Button(
+            text=Format("{confirm_text}"),
+            style=LabelIcon("confirm_text"),
+            id="confirm",
+            on_click=on_promocode_confirm,
+        ),
+        SwitchTo(
+            text=Format("{cancel_text}"),
+            style=LabelIcon("cancel_text"),
+            id="cancel",
+            state=Promocode.INPUT,
+        ),
     ),
     parse_mode=ParseMode.HTML,
     state=Promocode.CONFIRM,

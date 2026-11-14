@@ -77,10 +77,8 @@ class ImportTranslationsUseCase(UseCase[TranslationsImportDto, TranslationsImpor
                 TranslationChangedEvent(actor=actor, action="import")
             )
 
-        for text in applied:
-            await self._bot_signals.translation_changed(
-                text.locale, text.message_id, text.attribute_id, text.value
-            )
+        # one full reload instead of a signal per key
+        await self._bot_signals.dialogs_changed()
 
         await self._bot_commands.push()
         return TranslationsImportResultDto(applied=len(applied), skipped=skipped)

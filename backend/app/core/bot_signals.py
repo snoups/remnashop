@@ -28,9 +28,10 @@ class RedisBotSignals:
     async def translation_changed(
         self, locale: Locale, message_id: str, attribute_id: str, value: str
     ) -> None:
-        # fluentogram hot-patches message-level keys only; an attribute edit
-        # still lands in the DB and reaches the bot on its next restart
+        # fluentogram hot-patches message-level keys only; an attribute (every
+        # button label and icon) needs the full reload a dialog change does
         if attribute_id != "":
+            await self.dialogs_changed()
             return
         payload = json.dumps({"locale": locale.value, "message_id": message_id, "value": value})
         await self._redis.publish(TRANSLATION_CHANGED_CHANNEL, payload)

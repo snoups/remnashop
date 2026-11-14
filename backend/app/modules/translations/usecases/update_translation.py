@@ -1,4 +1,5 @@
 from app.core.actor import Actor
+from app.core.constants import ICON_ID_KEY_SUFFIX, ICON_KEY_SUFFIX
 from app.core.db.uow import UnitOfWork
 from app.core.ports import BotSignals, EventPublisher
 from app.core.security.permissions import Permission
@@ -37,6 +38,16 @@ class UpdateTranslationUseCase(UseCase[UpdateTranslationDto, TranslationEntryDto
         assert_valid_bot_html(data.message_id, data.value)
 
         async with self._uow:
+            if data.attribute_id.endswith((ICON_KEY_SUFFIX, ICON_ID_KEY_SUFFIX)):
+                # a button's icon row exists once something sets it, as long as
+                # the label it belongs to does
+                label = data.attribute_id.removesuffix(ICON_ID_KEY_SUFFIX).removesuffix(
+                    ICON_KEY_SUFFIX
+                )
+                await self._translation_repository.get_by_key(data.locale, data.message_id, label)
+                await self._translation_repository.seed_missing(
+                    data.locale, data.message_id, data.attribute_id, ""
+                )
             current = await self._translation_repository.get_by_key(
                 data.locale, data.message_id, data.attribute_id
             )

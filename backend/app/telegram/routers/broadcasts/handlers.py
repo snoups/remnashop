@@ -5,7 +5,7 @@ from typing import Final, Optional
 
 from aiogram import Bot, Dispatcher, F, Router
 from aiogram.filters import CommandStart
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from aiogram_dialog import DialogManager, ShowMode, StartMode
 from dishka import FromDishka
 from fluentogram import TranslatorHub, TranslatorRunner
@@ -160,9 +160,8 @@ async def on_broadcast_unsubscribe(
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
                 [
-                    InlineKeyboardButton(
-                        text=label_with_icon(runner, "btn-broadcast.resubscribe"),
-                        callback_data=RESUBSCRIBE_CALLBACK,
+                    label_with_icon(runner, "btn-broadcast.resubscribe").inline_button(
+                        callback_data=RESUBSCRIBE_CALLBACK
                     )
                 ]
             ]

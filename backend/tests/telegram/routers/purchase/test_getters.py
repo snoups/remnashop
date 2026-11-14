@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from remnapy.enums import TrafficLimitStrategy
 
-from app.core.constants import USER_KEY
+from app.core.constants import ICON_ID_KEY_SUFFIX, USER_KEY
 from app.core.enums import Currency, DiscountSource, Locale
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
@@ -22,6 +22,8 @@ from tests.telegram.routers.purchase.test_handlers import _plan
 
 
 def _get(key: str, **kwargs: Any) -> str:
+    if key.endswith(ICON_ID_KEY_SUFFIX):
+        return ""  # no premium icons: the glyph rides in the label
     return f"{key}{kwargs}" if kwargs else key
 
 
@@ -92,7 +94,7 @@ async def test_duration_labels_carry_the_quoted_price_and_the_period() -> None:
     ]
     assert "frg-purchase-discount" in data["window_text"]
     assert "'percent': 10" in data["window_text"]
-    assert data["back_text"].endswith(" btn-purchase.back-plans")
+    assert data["back_text"].text.endswith(" btn-purchase.back-plans")
 
 
 async def test_duration_falls_back_to_the_list_price_when_the_quote_fails() -> None:
@@ -124,7 +126,7 @@ async def test_renewal_shows_the_plans_limits_and_notes_its_edit() -> None:
     # the plan's own limits: a paid renewal moves the subscription to them
     assert "'traffic_limit': 0" in data["window_text"]
     assert "frg-purchase-plan-changed" in data["window_text"]
-    assert data["back_text"].endswith(" btn-back.general")
+    assert data["back_text"].text.endswith(" btn-back.general")
 
 
 async def test_renewal_of_an_unedited_plan_has_no_note() -> None:
@@ -196,7 +198,7 @@ async def test_method_labels_price_in_each_method_currency() -> None:
         },
     ]
     assert "frg-purchase-plan" in data["window_text"]
-    assert data["back_text"].endswith(" btn-purchase.back-duration")
+    assert data["back_text"].text.endswith(" btn-purchase.back-duration")
 
 
 async def _confirm(dialog_data: dict) -> dict:
@@ -219,7 +221,7 @@ async def test_confirm_shows_the_chosen_method_price() -> None:
     assert "'price': '2.50'" in text
     assert "'method': 'gateway-name.CRYPTOMUS'" in text
     assert "frg-purchase-type-notice" not in text
-    assert data["back_text"].endswith(" btn-purchase.back-method")
+    assert data["back_text"].text.endswith(" btn-purchase.back-method")
 
 
 async def test_confirm_of_a_change_warns_about_the_replacement() -> None:
@@ -235,7 +237,7 @@ async def test_confirm_of_a_change_warns_about_the_replacement() -> None:
     )
 
     assert "frg-purchase-type-notice{'purchase_type': 'CHANGE'}" in data["window_text"]
-    assert data["back_text"].endswith(" btn-purchase.back-duration")
+    assert data["back_text"].text.endswith(" btn-purchase.back-duration")
 
 
 async def test_plan_buttons_carry_the_custom_emoji_or_lead_with_the_glyph() -> None:

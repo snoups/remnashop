@@ -5,7 +5,7 @@ import pytest
 from redis.asyncio import Redis
 
 from app.core.config import AppConfig
-from app.core.constants import TTL_5M
+from app.core.constants import ICON_ID_KEY_SUFFIX, TTL_5M
 from app.core.enums import Locale
 from app.modules.cabinet_auth import DeeplinkStore, InviteCodesDto, IssueBotSignInLinkUseCase
 from app.telegram.routers.cabinet_auth import handlers
@@ -14,7 +14,8 @@ from app.telegram.routers.cabinet_auth.handlers import on_start_webauth
 
 class _Runner:
     def get(self, key: str, **kwargs: Any) -> str:
-        return key
+        # no premium icons: the glyph rides in the label
+        return "" if key.endswith(ICON_ID_KEY_SUFFIX) else key
 
 
 class _Hub:

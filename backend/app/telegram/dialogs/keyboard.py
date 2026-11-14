@@ -71,6 +71,7 @@ class ConfigKeyboard(Keyboard):
                             text=text,
                             url=None if is_web_app else url,
                             web_app=WebAppInfo(url=url) if is_web_app else None,
+                            style=button["style"],
                             icon_custom_emoji_id=icon_id,
                         )
                     )

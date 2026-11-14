@@ -6,6 +6,7 @@ from aiogram_dialog.widgets.text import Format
 from magic_filter import F
 
 from app.telegram.dialogs.keyboard import ConfigKeyboard
+from app.telegram.dialogs.rendering import LabelIcon
 from app.telegram.routers.referrals.catalog import register_referrals_catalog
 from app.telegram.routers.referrals.getters import (
     redeem_target_getter,
@@ -20,7 +21,12 @@ register_referrals_catalog()
 referrals_main = Window(
     DynamicMedia("banner", when="banner"),
     Format("{window_text}"),
-    CopyText(Format("{copy_text}"), copy_text=Format("{referral_url}"), when=F["referral_url"]),
+    CopyText(
+        Format("{copy_text}"),
+        style=LabelIcon("copy_text"),
+        copy_text=Format("{referral_url}"),
+        when=F["referral_url"],
+    ),
     ConfigKeyboard(window_key="referrals.main"),
     parse_mode=ParseMode.HTML,
     state=Referrals.MAIN,
@@ -35,7 +41,7 @@ redeem_target = Window(
         item_id_getter=lambda item: item["id"],
         items="subscriptions",
     ),
-    SwitchTo(Format("{back_text}"), id="back", state=Referrals.MAIN),
+    SwitchTo(Format("{back_text}"), style=LabelIcon("back_text"), id="back", state=Referrals.MAIN),
     parse_mode=ParseMode.HTML,
     state=Referrals.REDEEM_TARGET,
     getter=redeem_target_getter,

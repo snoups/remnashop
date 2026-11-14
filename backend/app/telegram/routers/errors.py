@@ -4,7 +4,7 @@ from typing import Optional
 from aiogram import Router
 from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import ExceptionTypeFilter
-from aiogram.types import ErrorEvent, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import ErrorEvent, InlineKeyboardMarkup, Message
 from aiogram_dialog import DialogManager, ShowMode, StartMode
 from aiogram_dialog.api.exceptions import OutdatedIntent, UnknownIntent, UnknownState
 from dishka import FromDishka
@@ -61,11 +61,7 @@ async def on_unhandled_error(
     keyboard = (
         InlineKeyboardMarkup(
             inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text=label_with_icon(runner, "btn-menu.support"), url=support
-                    )
-                ]
+                [label_with_icon(runner, "btn-menu.support").inline_button(url=support)]
             ]
         )
         if support
