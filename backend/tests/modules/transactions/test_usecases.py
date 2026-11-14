@@ -1,7 +1,7 @@
 import asyncio
 import contextlib
 import dataclasses
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Final, Optional
 from uuid import uuid4
@@ -1388,6 +1388,40 @@ async def test_create_checkout_renew_refuses_a_disabled_subscription(
         )
 
     assert error.value.code is ErrorCode.SUBSCRIPTION_DISABLED
+
+
+async def test_create_checkout_refuses_to_renew_an_unlimited_subscription(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    subscription_repository: SubscriptionRepository,
+    transaction_repository: TransactionRepository,
+) -> None:
+    subscription_id = await _seed_subscription(
+        subscription_repository, user_id=actor.id, remnawave_user_id=820_102, plan_id=plan.id
+    )
+    await subscription_repository.session.execute(
+        update(Subscription)
+        .where(Subscription.id == subscription_id)
+        .values(expire_at=datetime(2099, 1, 1, tzinfo=timezone.utc))
+    )
+
+    with pytest.raises(NotFoundError):
+        await create_checkout_use_case(
+            actor,
+            CreateCheckoutDto(
+                channel=PurchaseChannel.CABINET,
+                plan_id=plan.id,
+                duration_days=30,
+                currency=Currency.RUB,
+                purchase_type=PurchaseType.RENEW,
+                target_subscription_id=subscription_id,
+                gateway_type=PaymentGatewayType.YOOKASSA,
+            ),
+        )
+
+    assert await transaction_repository.count_open_new_orders(actor.id, datetime_now()) == 0
 
 
 @pytest.mark.parametrize("purchase_type", [PurchaseType.RENEW, PurchaseType.CHANGE])

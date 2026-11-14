@@ -1,13 +1,17 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
 from uuid import uuid4
 
+import pytest
 from remnapy import RemnawaveSDK
+from remnapy.enums import TrafficLimitStrategy
 
 from app.core.config import AppConfig
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PlanType, PurchaseType
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.modules.plans.dto import (
     CreatePlanDto,
@@ -19,7 +23,12 @@ from app.modules.plans.dto import (
 )
 from app.modules.plans.repository import PlanRepository
 from app.modules.pricing import PricingRepository
-from app.modules.subscriptions.dto import PurchaseSubscriptionDto, SubscriptionDto
+from app.modules.subscriptions.domain import calculate_proration_credit
+from app.modules.subscriptions.dto import (
+    PurchaseSubscriptionDto,
+    SubscriptionDto,
+    UpdateSubscriptionDto,
+)
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
@@ -162,3 +171,116 @@ async def test_trial_upgrade_to_unlimited_sets_2099(
     assert paid.remnawave_user_id == trial.remnawave_user_id
     assert paid.is_unlimited
     assert _panel_expiry(remnawave_store, paid).year == 2099
+
+
+async def test_renew_refuses_unlimited_target_before_panel(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    buyer = await user_repository.create(CreateUserDto(name="renew", telegram_id=91003))
+    plan = await _plan(plan_repository, "forever-renew-refused")
+    use_case = _use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    forever = await _buy(use_case, buyer, plan, days=0, paid="5000")
+    before = _panel_expiry(remnawave_store, forever)
+
+    with pytest.raises(ValidationError) as error:
+        await _buy(
+            use_case,
+            buyer,
+            plan,
+            days=30,
+            paid="500",
+            purchase_type=PurchaseType.RENEW,
+            target_subscription_id=forever.id,
+        )
+
+    assert error.value.code is ErrorCode.SUBSCRIPTION_UNLIMITED
+    assert _panel_expiry(remnawave_store, forever) == before
+
+
+async def test_renew_finite_with_unlimited_duration(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    buyer = await user_repository.create(CreateUserDto(name="upgrade", telegram_id=91004))
+    plan = await _plan(plan_repository, "forever-renew-into")
+    use_case = _use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    month = await _buy(use_case, buyer, plan, days=30, paid="500")
+
+    renewed = await _buy(
+        use_case,
+        buyer,
+        plan,
+        days=0,
+        paid="5000",
+        purchase_type=PurchaseType.RENEW,
+        target_subscription_id=month.id,
+    )
+
+    assert renewed.is_unlimited
+    assert _panel_expiry(remnawave_store, renewed).year == 2099
+    snapshot = renewed.plan_snapshot
+    assert snapshot.unlimited_from == month.expire_at
+    assert snapshot.unlimited_from_credit_paid == Decimal("500")
+    assert snapshot.unlimited_from_credit_days == 30
+    assert snapshot.credit_paid == Decimal("5000")
+    assert snapshot.credit_days == 0
+
+
+async def test_renewable_is_empty_for_unlimited_until_it_turns_finite(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    buyer = await user_repository.create(CreateUserDto(name="renewable", telegram_id=91005))
+    plan = await _plan(plan_repository, "forever-renewable")
+    use_case = _use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    forever = await _buy(use_case, buyer, plan, days=0, paid="5000")
+    eligibility = make_eligibility(subscription_repository.session)
+
+    assert await eligibility.renewable([plan], buyer.id, forever.id) == []
+
+    await subscription_repository.update(
+        UpdateSubscriptionDto(
+            subscription_id=forever.id, expire_at=datetime(2027, 1, 1, tzinfo=timezone.utc)
+        )
+    )
+
+    assert [p.id for p in await eligibility.renewable([plan], buyer.id, forever.id)] == [plan.id]
+
+
+def test_proration_credit_of_unlimited_is_zero() -> None:
+    credit = calculate_proration_credit(
+        credit_paid=Decimal("5000"),
+        credit_days=0,
+        expire_at=datetime(2099, 1, 1, tzinfo=timezone.utc),
+        is_trial=False,
+        now=datetime(2026, 11, 14, tzinfo=timezone.utc),
+        traffic_limit=0,
+        traffic_limit_strategy=TrafficLimitStrategy.NO_RESET,
+        used_traffic_bytes=0,
+    )
+
+    assert credit == Decimal("0")

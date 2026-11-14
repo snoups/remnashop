@@ -4661,6 +4661,7 @@
     "SUBSCRIPTION_NOT_FOUND": "Подписка не найдена.",
     "SUBSCRIPTION_ROLLBACK_BLOCKED": "Подписка изменилась после этой покупки, откатить её нельзя.",
     "SUBSCRIPTION_STATUS_TRANSITION_INVALID": "Такая смена статуса подписки недопустима.",
+    "SUBSCRIPTION_UNLIMITED": "Бессрочную подписку нельзя продлить.",
     "SVG_UNSAFE": "SVG должен быть простой разметкой с viewBox, без скриптов.",
     "TARGET_SUBSCRIPTION_FORBIDDEN": "Новая покупка не может относиться к существующей подписке.",
     "TARGET_SUBSCRIPTION_NOT_ACTIVE": "Выберите активную подписку.",

@@ -4547,6 +4547,7 @@
     "SUBSCRIPTION_NOT_FOUND": "Subscription not found.",
     "SUBSCRIPTION_ROLLBACK_BLOCKED": "The subscription changed after this purchase and can’t be rolled back.",
     "SUBSCRIPTION_STATUS_TRANSITION_INVALID": "This subscription status change isn’t allowed.",
+    "SUBSCRIPTION_UNLIMITED": "An unlimited subscription can’t be renewed or extended.",
     "SVG_UNSAFE": "The SVG must be plain markup with a viewBox, without scripts.",
     "TARGET_SUBSCRIPTION_FORBIDDEN": "A new purchase can’t target an existing subscription.",
     "TARGET_SUBSCRIPTION_NOT_ACTIVE": "Choose an active subscription.",

@@ -54,7 +54,7 @@ class SubscriptionLifecycleService:
         state = _dto_to_state(dto)
         lapsed = state.expire_at <= datetime_now()
         new_state = state.reactivate_on_renew(new_expire_at).add_renewal_credit(
-            paid, days, restart=lapsed
+            paid, days, restart=lapsed, previous_expire_at=state.expire_at
         )
         return await self._subscription_repository.apply_state(new_state)
 

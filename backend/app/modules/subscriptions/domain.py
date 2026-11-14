@@ -122,9 +122,28 @@ class SubscriptionState:
         return replace(self, status=target, expire_at=new_expire_at)
 
     def add_renewal_credit(
-        self, paid: Decimal, days: int, *, restart: bool = False
+        self,
+        paid: Decimal,
+        days: int,
+        *,
+        restart: bool = False,
+        previous_expire_at: Optional[datetime] = None,
     ) -> SubscriptionState:
         snap = self.plan_snapshot
+        if days == 0:
+            # an unlimited term isn't prorated by days; what it replaced is kept
+            # for a refund to put back
+            return replace(
+                self,
+                plan_snapshot=replace(
+                    snap,
+                    credit_paid=paid,
+                    credit_days=0,
+                    unlimited_from=previous_expire_at,
+                    unlimited_from_credit_paid=snap.effective_credit_paid,
+                    unlimited_from_credit_days=snap.effective_credit_days,
+                ),
+            )
         # a lapsed term's money was used up; the new term starts its own credit
         base_paid = ZERO_AMOUNT if restart else snap.effective_credit_paid
         base_days = 0 if restart else snap.effective_credit_days
