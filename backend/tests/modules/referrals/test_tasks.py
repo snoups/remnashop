@@ -680,6 +680,64 @@ async def test_assign_referral_rewards_percent_points_from_order_anchor_amount(
     assert (await user_repository.find_by_id(referrer)).points == Decimal("1")
 
 
+async def test_percent_days_reward_for_unlimited_uses_the_setting(
+    referral_repository: ReferralRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    assign_rewards: AssignReferralRewardsUseCase,
+) -> None:
+    await referral_repository.update_settings(
+        UpdateReferralSettingsDto(
+            enabled=True,
+            max_level=1,
+            accrual_strategy=ReferralAccrualStrategy.EVERY_PAYMENT,
+            reward_type=ReferralRewardType.EXTRA_DAYS,
+            reward_strategy=ReferralRewardStrategy.PERCENT,
+            reward_amounts={1: Decimal("10")},
+            days_require_paid_subscription=False,
+        )
+    )
+    referrer = await _create_user(user_repository, 4121)
+    buyer = await _create_user(user_repository, 4122)
+    await referral_repository.create_referral(referrer_id=referrer, referred_id=buyer, level=1)
+    subscription_id = await _create_active_subscription(subscription_repository, buyer, 4122)
+    order = await TransactionRepository(referral_repository.session).create(
+        CreateTransactionDto(
+            channel=PurchaseChannel.CABINET,
+            user_id=buyer,
+            plan_id=None,
+            plan_snapshot=make_plan_snapshot(plan_id=1, duration_days=0),
+            duration_days=0,
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.NEW,
+            target_subscription_id=None,
+            gateway_type=PaymentGatewayType.YOOKASSA,
+            base_price=Decimal("5000"),
+            discount_percent=0,
+            discount_source=DiscountSource.NONE,
+            final_price=Decimal("5000"),
+            anchor_base_price=Decimal("50"),
+            anchor_final_price=Decimal("50"),
+            customer_email=None,
+            idempotency_key="order-percent-unlimited",
+            expires_at=datetime_now() + timedelta(minutes=30),
+        )
+    )
+    await _set_status(referral_repository.session, order.id)
+
+    await assign_rewards.system(
+        AssignReferralRewardsDto(
+            user_id=buyer,
+            subscription_id=subscription_id,
+            is_new_purchase=True,
+            payment_key="order-percent-unlimited",
+        )
+    )
+
+    # 10% of the default 365 days
+    assert (await user_repository.find_by_id(referrer)).bonus_days == 36
+
+
 def test_level_amounts_percent_of_days_rounds_down_with_a_floor_of_one() -> None:
     settings = ReferralSettingsDto(
         reward_type=ReferralRewardType.EXTRA_DAYS,

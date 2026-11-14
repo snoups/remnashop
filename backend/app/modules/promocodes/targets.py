@@ -24,6 +24,9 @@ def reward_takes_effect(
     helps LIMITED while its term runs. Never a trial; unknown usage is no."""
     if subscription.is_trial:
         return False
+    # days add nothing to a term that never ends
+    if reward_type is PromocodeRewardType.DURATION and subscription.is_unlimited:
+        return False
     if subscription.status is SubscriptionStatus.ACTIVE:
         return True
     if used_traffic is None or subscription.status not in (

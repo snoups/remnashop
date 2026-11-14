@@ -66,10 +66,11 @@ class PlanDto(BaseDto, TimestampMixin):
     durations: list[PlanDurationDto] = Field(default_factory=list)
 
     def sellable_durations(self) -> list[PlanDurationDto]:
-        # a trial plan offers only its one duration, free at 0; anywhere else a
-        # 0 price is a leftover from a plan that stopped being a trial
+        # a trial plan offers only its one duration, free at 0, never unlimited (one
+        # migrated so is kept but not offered); anywhere else a 0 price is a leftover
+        # from a plan that stopped being a trial
         if self.is_trial:
-            return self.durations[:1]
+            return [duration for duration in self.durations if duration.days > 0][:1]
         return [duration for duration in self.durations if duration.base_price > 0]
 
     def free_trial_duration(self) -> Optional[PlanDurationDto]:

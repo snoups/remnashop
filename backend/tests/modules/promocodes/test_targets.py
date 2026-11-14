@@ -66,6 +66,14 @@ def test_a_trial_takes_no_reward(status: SubscriptionStatus) -> None:
     assert not any(_takes(trial, reward, 0, 100) for reward in (DURATION, TRAFFIC, DEVICES))
 
 
+def test_duration_reward_skips_an_unlimited_subscription() -> None:
+    forever = _sub(SubscriptionStatus.ACTIVE, expire_at=NOW.replace(year=2099))
+
+    assert not _takes(forever, DURATION, -1)
+    assert _takes(forever, TRAFFIC, -1)
+    assert _takes(forever, DEVICES, -1)
+
+
 def test_days_bring_back_an_expired_subscription_with_traffic_left() -> None:
     expired = _sub(SubscriptionStatus.EXPIRED, expire_at=NOW - timedelta(days=40))
     assert _takes(expired, DURATION, 99.9)

@@ -40,6 +40,7 @@ export interface TransactionItem {
   discount_source: DiscountSource;
   plan_discount_percent: number;
   final_price: string;
+  change_credit: string;
   customer_email: string | null;
   idempotency_key: string;
   is_test: boolean;

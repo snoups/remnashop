@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { getRevenue } from "@entities/analytics/api";
 import type { AnalyticsPeriod, GatewayStats, Revenue, RevenueGranularity, RevenueGroup } from "@entities/analytics/api";
+import { formatDuration } from "@shared/lib/duration";
 import { formatMoney, formatPercent } from "@shared/lib/format";
 import { parseIsoDate } from "@shared/lib/iso-date";
 import { DAY_MS } from "@shared/lib/period";
@@ -194,7 +195,7 @@ function Overview({
         {group === "duration" && (
           <BarRows
             head={groupHead(t("analytics.revenue.duration"))}
-            rows={groupRows(data.by_duration, (key) => t("plans.daysShort", { count: Number(key) }))}
+            rows={groupRows(data.by_duration, (key) => formatDuration(Number(key), t))}
             empty={empty}
           />
         )}

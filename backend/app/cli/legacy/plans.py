@@ -59,6 +59,18 @@ class PlanRows:
     overrides: list[dict[str, Any]]
 
 
+def _unlimited_trial_notes(
+    plan_rows: list[dict[str, Any]], duration_rows: list[dict[str, Any]]
+) -> list[str]:
+    unlimited_plan_ids = {int(row["plan_id"]) for row in duration_rows if row["days"] == 0}
+    return [
+        f"plans: trial plan '{row['name']}' had an unlimited duration; a trial can't be "
+        "unlimited, so it isn't offered until a duration is set in the dashboard"
+        for row in plan_rows
+        if row.get("is_trial") and int(row["id"]) in unlimited_plan_ids
+    ]
+
+
 def transform_plans(
     plans: Sequence[Mapping[str, Any]],
     durations: Sequence[Mapping[str, Any]],
@@ -142,4 +154,5 @@ def transform_plans(
         )
     if renamed:
         report.notes.append(f"plans: leading emoji removed from {renamed} plan names")
+    report.notes.extend(_unlimited_trial_notes(plan_rows, duration_rows))
     return PlanRows(plans=plan_rows, durations=duration_rows, overrides=overrides)

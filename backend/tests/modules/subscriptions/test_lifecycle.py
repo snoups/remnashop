@@ -60,7 +60,13 @@ async def test_renew_reactivates_an_expired_subscription(
 
     new_expire_at = datetime(2027, 1, 1, tzinfo=timezone.utc)
     async with uow:
-        result = await service.renew(created.id, new_expire_at, paid=Decimal(0), days=30)
+        result = await service.renew(
+            created.id,
+            new_expire_at,
+            paid=Decimal(0),
+            days=30,
+            previous_expire_at=created.expire_at,
+        )
 
     assert result.status is SubscriptionStatus.ACTIVE
     assert result.expire_at == new_expire_at
@@ -89,7 +95,11 @@ async def test_renew_restarts_the_credit_only_for_a_lapsed_term(
 
     async with uow:
         result = await service.renew(
-            created.id, datetime_now() + timedelta(days=60), paid=Decimal("100"), days=30
+            created.id,
+            datetime_now() + timedelta(days=60),
+            paid=Decimal("100"),
+            days=30,
+            previous_expire_at=created.expire_at,
         )
 
     assert result.plan_snapshot.effective_credit_paid == credit_paid

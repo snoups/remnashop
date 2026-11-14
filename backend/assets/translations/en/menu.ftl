@@ -190,6 +190,7 @@ btn-subscriptions =
     .purchase-icon = 💸
     .item = { $status ->
         [ACTIVE] 🟢 { $plan_name } · until { $expire_at }
+        [UNLIMITED] 🟢 { $plan_name } · no end date
         [LIMITED] 🟡 { $plan_name } · traffic used up
         [EXPIRED] 🔴 { $plan_name } · expired { $expire_at }
         [DISABLED] ⚫ { $plan_name } · disabled
@@ -407,6 +408,10 @@ msg-purchase-confirm =
     { $plan_changed_notice }
 
     { $terms_notice }
+frg-purchase-change-unlimited-notice = { $kind ->
+        [credit] <i>⚠️ Your current subscription will be <u>replaced</u> with the chosen plan. What you paid for your current unlimited subscription is already taken off the price.</i>
+       *[other] <i>⚠️ Your current subscription will be <u>replaced</u> with the chosen plan. The unused part of your payment <u>is not carried over</u>.</i>
+    }
 frg-purchase-terms-notice = <i>By paying you accept the terms — /terms</i>
 msg-purchase-pay = Your order is ready. Tap the button below to pay.
 msg-purchase-link-choice = You already have a { $plan_name } subscription. Renew it or buy another one?
@@ -517,10 +522,13 @@ msg-promocode-confirm =
             [one] device
            *[other] devices
         }</b> on your device limit.
-        [SUBSCRIPTION] the <b>{ $promo_plan_name }</b> subscription for <b>{ $promo_reward } { $promo_reward ->
-            [one] day
-           *[other] days
-        }</b>.
+        [SUBSCRIPTION] the <b>{ $promo_plan_name }</b> subscription { $promo_reward ->
+            [0] <b>forever</b>
+           *[other] for <b>{ $promo_reward } { $promo_reward ->
+                [one] day
+               *[other] days
+            }</b>
+        }.
         [PERSONAL_DISCOUNT] a permanent <b>{ $promo_reward }% discount</b> on every purchase.
         [PURCHASE_DISCOUNT] a <b>{ $promo_reward }% discount</b> on your next purchase.
        *[other] a reward on your account.
@@ -604,6 +612,8 @@ time-unit =
     }
     .hour = { $value } h
     .minute = { $value } min
+    .unlimited = Forever
+    .no-expiry = no end date
 
 inline-invite =
     .title = Invite a friend

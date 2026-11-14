@@ -14,6 +14,7 @@ from app.core.exceptions import ConflictError
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.pricing import PricingRepository
+from app.modules.subscriptions.domain import refunded_unlimited_expiry
 from app.modules.subscriptions.dto import (
     PurchaseRollbackDto,
     RollbackPreviewDto,
@@ -45,6 +46,13 @@ async def _rollback_blocker(
         return None
     if fulfilled.status is SubscriptionStatus.DELETED:
         return "subscription_deleted"
+    if (
+        data.purchase_type is PurchaseType.RENEW
+        and data.duration_days == 0
+        and not fulfilled.is_unlimited
+    ):
+        # given a date since: the term it replaced would drop what came after
+        return "renewed_or_changed_later"
     if data.purchase_type is PurchaseType.NEW and data.has_later_paid_order:
         return "renewed_or_changed_later"
     return None
@@ -157,11 +165,14 @@ class PurchaseRollbackService:
         panel_user = await self._remnawave_sdk.users.get_user_by_id(target.remnawave_user_id)
         if panel_user.expire_at < pinned:
             return  # the extension never landed
+        # the row never took it, so its expiry is the one before the renewal
+        before = (
+            target.expire_at
+            if data.duration_days == 0
+            else pinned - timedelta(days=data.duration_days)
+        )
         await self._remnawave_sdk.users.update_user(
-            UpdateUserRequestDto(
-                id=target.remnawave_user_id,
-                expire_at=pinned - timedelta(days=data.duration_days),
-            )
+            UpdateUserRequestDto(id=target.remnawave_user_id, expire_at=before)
         )
         logger.info(
             f"Reverted the panel extension of subscription '{target.id}' "
@@ -172,12 +183,17 @@ class PurchaseRollbackService:
         self, actor: Actor, data: PurchaseRollbackDto, renewed: SubscriptionDto
     ) -> None:
         now = datetime_now()
-        await self._remnawave_sdk.users.update_user(
-            UpdateUserRequestDto(
-                id=renewed.remnawave_user_id,
-                expire_at=renewed.expire_at - timedelta(days=data.duration_days),
+        if data.duration_days == 0:
+            before = refunded_unlimited_expiry(renewed.plan_snapshot, now)
+        elif renewed.is_unlimited:
+            # a later unlimited renewal replaced the refunded term: 2099 stays
+            before = renewed.expire_at
+        else:
+            before = renewed.expire_at - timedelta(days=data.duration_days)
+        if before != renewed.expire_at:
+            await self._remnawave_sdk.users.update_user(
+                UpdateUserRequestDto(id=renewed.remnawave_user_id, expire_at=before)
             )
-        )
         current = renewed
         try:
             async with self._uow:

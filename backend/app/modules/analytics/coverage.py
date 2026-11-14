@@ -1,16 +1,22 @@
 from calendar import monthrange
 from datetime import datetime, timedelta
 
+from app.core.constants import UNLIMITED_COVERAGE_DAYS
+
 
 def paid_coverage(payments: list[tuple[datetime, int]]) -> list[tuple[datetime, datetime]]:
     # an early renewal extends the current segment, a late one starts a new one
     segments: list[tuple[datetime, datetime]] = []
-    for paid_at, days in sorted(payments):
+    for paid_at, paid_days in sorted(payments):
+        days = paid_days or UNLIMITED_COVERAGE_DAYS
         if segments and paid_at <= segments[-1][1]:
             start, end = segments[-1]
             segments[-1] = (start, max(end, paid_at) + timedelta(days=days))
         else:
             segments.append((paid_at, paid_at + timedelta(days=days)))
+        if not paid_days:
+            # covered for good: later payments add nothing, and stacked they'd overflow
+            break
     return segments
 
 

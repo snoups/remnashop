@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -208,6 +209,37 @@ def test_purchase_card_shows_payment_subscription_plan_and_user() -> None:
     )
 
 
+def test_an_unlimited_purchase_card_says_no_end_date() -> None:
+    renderer = _renderer(Locale.RU)
+    data = _data()
+    assert data.subscription is not None
+    subscription = data.subscription.model_copy(
+        update={
+            "expire_at": datetime_now().replace(year=2099),
+            "plan_snapshot": replace(_plan(), duration_days=0),
+        }
+    )
+    args = notification_args(_PAYLOAD, "185.12.44.7")
+    title, body = renderer.render(Locale.RU, "SubscriptionPurchasedEvent", args)
+
+    card = build_telegram_card(
+        renderer,
+        Locale.RU,
+        event_type="SubscriptionPurchasedEvent",
+        payload=_PAYLOAD,
+        args=args,
+        data=replace(data, subscription=subscription),
+        build=_BUILD,
+        title=title,
+        body=body,
+        notes="",
+    )
+
+    assert "• <b>Осталось</b>: бессрочно" in card
+    assert "• <b>Длительность</b>: бессрочно" in card
+    assert not renderer.missing
+
+
 def test_a_plan_change_shows_old_and_new_plan_side_by_side() -> None:
     renderer = _renderer(Locale.RU)
     previous = {"name": "Базовый", "traffic_limit": 0, "device_limit": 3, "duration_days": 30}
@@ -323,3 +355,33 @@ def test_traffic_starts_at_megabytes(size: int, shown: str) -> None:
         notes="",
     )
     assert f"• <b>Трафик</b>: {shown} / 100 ГБ" in card
+
+
+def test_a_change_from_a_panel_import_shows_no_old_term() -> None:
+    # an import stores 0 days with no term known, which isn't "forever"
+    renderer = _renderer(Locale.RU)
+    previous = {
+        "plan_id": 0,
+        "name": "Импорт",
+        "traffic_limit": 0,
+        "device_limit": 3,
+        "duration_days": 0,
+    }
+    payload = {**_PAYLOAD, "previous_plan_snapshot": previous}
+    args = notification_args(payload, None)
+    title, body = renderer.render(Locale.RU, "SubscriptionChangedEvent", args)
+
+    card = build_telegram_card(
+        renderer,
+        Locale.RU,
+        event_type="SubscriptionChangedEvent",
+        payload=payload,
+        args=args,
+        data=_data(),
+        build=_BUILD,
+        title=title,
+        body=body,
+        notes="",
+    )
+
+    assert "• <b>Длительность</b>: 30 дней</blockquote>" in card

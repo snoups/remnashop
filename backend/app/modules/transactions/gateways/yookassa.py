@@ -14,7 +14,12 @@ from app.modules.transactions.gateways.base import (
     ProviderPayment,
     WebhookSignal,
 )
-from app.modules.transactions.gateways.common import PROVIDER_API_TIMEOUT_S, parse_json, to_decimal
+from app.modules.transactions.gateways.common import (
+    PROVIDER_API_TIMEOUT_S,
+    order_period_text,
+    parse_json,
+    to_decimal,
+)
 
 _API_BASE: Final[str] = "https://api.yookassa.ru/v3"
 _PAID_STATUS: Final[str] = "succeeded"
@@ -35,7 +40,9 @@ def _build_receipt(
     if not order.customer_email or settings.vat_code is None:
         return None
     item: dict[str, object] = {
-        "description": f"Subscription plan #{order.plan_id}, {order.duration_days}d",
+        "description": (
+            f"Subscription plan #{order.plan_id}, {order_period_text(order.duration_days)}"
+        ),
         "quantity": "1.00",
         "amount": {"value": f"{order.final_price:.2f}", "currency": order.currency.value},
         "vat_code": int(settings.vat_code),

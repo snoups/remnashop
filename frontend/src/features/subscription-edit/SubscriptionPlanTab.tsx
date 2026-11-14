@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { formatLimit, formatTraffic, type SubscriptionListItem } from "@entities/subscriptions/api";
 import { SubscriptionField } from "@features/subscription-edit/SubscriptionField";
 import { useSquadName } from "@features/subscription-edit/use-squad-name";
+import { formatDurationLong, isUnlimitedExpiry } from "@shared/lib/duration";
 import { formatMoney } from "@shared/lib/format";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
 
@@ -29,14 +30,24 @@ export function SubscriptionPlanTab({ subscription }: SubscriptionPlanTabProps) 
         <SubscriptionField
           icon={CalendarDays}
           label={t("subscriptions.plan.duration")}
-          value={t("subscriptions.duration.days", { count: snapshot.duration_days })}
+          value={
+            // an import from the panel stores 0 with no term known: "forever" only when it is
+            snapshot.duration_days === 0 && !isUnlimitedExpiry(subscription.expire_at)
+              ? none
+              : formatDurationLong(snapshot.duration_days, t)
+          }
         />
         <SubscriptionField icon={Hash} label={t("subscriptions.plan.code")} value={snapshot.public_code} mono />
         {snapshot.credit_paid != null && snapshot.credit_days != null && (
           <SubscriptionField
             icon={Coins}
             label={t("subscriptions.plan.credit")}
-            value={`${money(snapshot.credit_paid)} · ${t("subscriptions.duration.days", { count: snapshot.credit_days })}`}
+            value={
+              // an unlimited term's credit isn't counted in days
+              snapshot.credit_days > 0
+                ? `${money(snapshot.credit_paid)} · ${t("subscriptions.duration.days", { count: snapshot.credit_days })}`
+                : money(snapshot.credit_paid)
+            }
           />
         )}
         <SubscriptionField

@@ -42,3 +42,17 @@ def test_reward_amounts_and_warning() -> None:
     assert "сгорит" not in days
     plan = html.unescape(_confirm(Locale.RU, PromocodeRewardType.SUBSCRIPTION, 30, plan="Про"))
     assert "подписку <b>Про</b> на <b>30 дней</b>." in plan
+
+
+@pytest.mark.parametrize(
+    ("locale", "expected"),
+    [
+        (Locale.RU, "подписку <b>Про</b> <b>навсегда</b>."),
+        (Locale.EN, "the <b>Про</b> subscription <b>forever</b>."),
+    ],
+)
+def test_an_unlimited_subscription_reward_reads_forever(locale: Locale, expected: str) -> None:
+    text = _confirm(locale, PromocodeRewardType.SUBSCRIPTION, 0, plan="Про")
+
+    validate_telegram_html(text, code=ErrorCode.TRANSLATION_HTML_INVALID)
+    assert expected in html.unescape(text)

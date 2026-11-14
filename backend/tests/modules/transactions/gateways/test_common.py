@@ -18,6 +18,7 @@ from app.modules.transactions.gateways.common import (
     link_lifetime,
     load_rsa_public_key,
     md5_hex,
+    order_period_text,
     parse_form,
     parse_json,
     rsa_verify,
@@ -145,3 +146,8 @@ def test_format_helpers() -> None:
     moment = datetime(2026, 1, 16, 9, 0, tzinfo=UTC)
     assert format_utc(moment) == "2026-01-16T09:00:00Z"
     assert format_moscow(moment) == "2026-01-16T12:00"
+
+
+def test_order_period_text_names_an_unlimited_order() -> None:
+    assert order_period_text(0) == "unlimited"
+    assert order_period_text(30) == "30d"

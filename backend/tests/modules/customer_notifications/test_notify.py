@@ -1,4 +1,5 @@
 import secrets
+from dataclasses import replace
 from datetime import timedelta
 from typing import Any, Optional, Union, cast
 
@@ -57,6 +58,8 @@ ntf-customer-subscription-changed = Plan changed.
     .title = Changed
 ntf-customer-subscription-purchased = Subscription is active.
     .title = Activated
+ntf-customer-subscription-granted = { $plan_name } granted.
+    .title = Granted
 ntf-customer-subscription-expiring = Expires soon. { $is_trial ->
         [yes] Buy one.
        *[no] Renew it.
@@ -512,6 +515,34 @@ async def test_expiring_trial_gets_a_buy_button(fx: _Fixture) -> None:
     )
     (row,) = await fx.feed_rows(user)
     assert row.args == {"is_trial": "yes"}
+
+
+async def test_a_grant_names_its_plan(fx: _Fixture) -> None:
+    # the event carries only the plan id; the feed renders the row again later
+    user = await fx.create(name="g", telegram_id=8093)
+    async with fx.uow:
+        granted = await SubscriptionRepository(fx.orders.session).create(
+            CreateSubscriptionDto(
+                user_id=user.id,
+                remnawave_user_id=880_093,
+                status=SubscriptionStatus.ACTIVE,
+                traffic_limit=0,
+                device_limit=0,
+                expire_at=datetime_now(),
+                url="https://example.test/sub",
+                plan_snapshot=replace(make_plan_snapshot(plan_id=1), name="Про"),
+            )
+        )
+
+    await fx.notify(
+        user,
+        "SubscriptionGrantedEvent",
+        subscription_id=granted.id,
+        args={"duration_days": 30},
+    )
+
+    (row,) = await fx.feed_rows(user)
+    assert row.args == {"duration_days": 30, "plan_name": "Про"}
 
 
 async def test_hours_are_rendered_as_a_span_but_stored_as_hours(fx: _Fixture) -> None:

@@ -132,6 +132,7 @@ export function ReferralSettingsPage() {
   const [rewardStrategy, setRewardStrategy] = useState<ReferralRewardStrategy>("AMOUNT");
   const [rewardAmounts, setRewardAmounts] = useState<ReferralRewardAmounts>({ 1: "", 2: "", 3: "" });
   const [daysRequirePaid, setDaysRequirePaid] = useState(true);
+  const [unlimitedRewardDays, setUnlimitedRewardDays] = useState("365");
   const [inviteeRewardType, setInviteeRewardType] = useState<ReferralRewardType>("EXTRA_DAYS");
   const [inviteeRewardAmount, setInviteeRewardAmount] = useState("0");
   const [inviteeEnabled, setInviteeEnabled] = useState(false);
@@ -154,6 +155,7 @@ export function ReferralSettingsPage() {
     setRewardStrategy(settings.reward_strategy);
     setRewardAmounts(settings.reward_amounts);
     setDaysRequirePaid(settings.days_require_paid_subscription);
+    setUnlimitedRewardDays(String(settings.unlimited_reward_days));
     setInviteeRewardType(settings.invitee_reward_type);
     setInviteeRewardAmount(String(settings.invitee_reward_amount));
     setInviteeEnabled(settings.invitee_reward_amount > 0);
@@ -174,6 +176,7 @@ export function ReferralSettingsPage() {
         reward_strategy: rewardStrategy,
         reward_amounts: amountsToSave(),
         days_require_paid_subscription: daysRequirePaid,
+        unlimited_reward_days: Number(unlimitedRewardDays),
         invitee_reward_type: inviteeRewardType,
         invitee_reward_amount: inviteeEnabled ? Number(inviteeRewardAmount) || 0 : 0,
       });
@@ -236,6 +239,8 @@ export function ReferralSettingsPage() {
     return amounts;
   };
   // mirrors the backend: a whole number of 1..MAX_INVITEE_REWARD, 0 when switched off
+  const isUnlimitedDaysInvalid =
+    !/^\d+$/.test(unlimitedRewardDays) || Number(unlimitedRewardDays) < 1 || Number(unlimitedRewardDays) > MAX_INVITEE_REWARD;
   const isInviteeInvalid =
     inviteeEnabled &&
     (!/^\d+$/.test(inviteeRewardAmount) || Number(inviteeRewardAmount) < 1 || Number(inviteeRewardAmount) > MAX_INVITEE_REWARD);
@@ -250,6 +255,7 @@ export function ReferralSettingsPage() {
       rewardStrategy !== saved.reward_strategy ||
       activeLevels.some((level) => rewardAmounts[level] !== saved.reward_amounts[level]) ||
       daysRequirePaid !== saved.days_require_paid_subscription ||
+      unlimitedRewardDays !== String(saved.unlimited_reward_days) ||
       inviteeEnabled !== savedInviteeAmount > 0 ||
       (inviteeEnabled &&
         (inviteeRewardType !== saved.invitee_reward_type || inviteeRewardAmount !== String(savedInviteeAmount))));
@@ -278,7 +284,7 @@ export function ReferralSettingsPage() {
             <SaveFooter
               dirty={dirty}
               saving={isSaving}
-              disabled={hasInvalidLevel || isInviteeInvalid}
+              disabled={hasInvalidLevel || isInviteeInvalid || isUnlimitedDaysInvalid}
               beside={resetButton}
             />
           ) : (
@@ -339,6 +345,28 @@ export function ReferralSettingsPage() {
                     : t("referrals.settings.rewardStrategyDescription.AMOUNT")
                 }
               />
+              {rewardType === "EXTRA_DAYS" && rewardStrategy === "PERCENT" && (
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="referrals-unlimited-days" className={SWITCH_LABEL_CLASS}>
+                    {t("referrals.settings.unlimitedRewardDaysLabel")}
+                    <FieldHint text={t("referrals.settings.unlimitedRewardDaysHint")} />
+                  </label>
+                  <Input
+                    className="w-28 shrink-0"
+                    id="referrals-unlimited-days"
+                    type="number"
+                    onKeyDown={blockNonIntegerKeys}
+                    min={1}
+                    max={MAX_INVITEE_REWARD}
+                    step="1"
+                    value={unlimitedRewardDays}
+                    disabled={areSettingsLocked}
+                    onChange={(event) => setUnlimitedRewardDays(event.target.value)}
+                    aria-invalid={isUnlimitedDaysInvalid}
+                    suffix={t("referrals.units.EXTRA_DAYS", { count: Number(unlimitedRewardDays) || 0 })}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>

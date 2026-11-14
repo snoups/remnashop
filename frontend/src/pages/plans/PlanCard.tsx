@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import type { Plan, PlanAvailability } from "@entities/plans/api";
 import { planDiscountStatus } from "@entities/plans/discount";
 import { PlanIcon } from "@entities/plans/PlanIcon";
+import { formatDuration } from "@shared/lib/duration";
 import { formatBytes, formatMoney } from "@shared/lib/format";
 import { ActionMenu, type ActionMenuItem } from "@shared/ui/ActionMenu";
 import { Badge } from "@shared/ui/Badge";
@@ -113,13 +114,13 @@ export function PlanCard({
                         : new Intl.NumberFormat(i18n.language).format(Number(cheapest.base_price))
                       : t("common.none")}
                   </span>
-                  {cheapest && (
+                  {cheapest && cheapest.days > 0 && (
                     <span className="text-xs text-muted-foreground">{t("plans.perDays", { count: cheapest.days })}</span>
                   )}
                 </div>
                 <div className="truncate text-xs text-muted-foreground">
                   {durations.length > 0
-                    ? durations.map((d) => t("plans.daysShort", { count: d.days })).join(" · ")
+                    ? durations.map((d) => formatDuration(d.days, t)).join(" · ")
                     : "\u00a0"}
                 </div>
               </div>

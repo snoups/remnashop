@@ -17,6 +17,7 @@ from app.modules.broadcasts.dto import (
 )
 from app.modules.broadcasts.storage import media_path
 from app.modules.broadcasts.telegram_api import OutgoingMedia
+from app.modules.subscriptions import is_unlimited_expiry
 from app.modules.translations import TranslationRepository
 
 UNSUBSCRIBE_KEY: Final[str] = "btn-broadcast.unsubscribe"
@@ -34,12 +35,18 @@ class RenderedMessage:
 def recipient_values(
     context: RecipientContextDto, now: datetime, promocode_code: Optional[str]
 ) -> dict[str, str]:
+    # an unlimited subscription has no date to show: the line holding it drops
+    expire_at = (
+        None
+        if context.expire_at is None or is_unlimited_expiry(context.expire_at)
+        else context.expire_at
+    )
     return {
         "name": context.name,
         "username": f"@{context.username}" if context.username else "",
         "plan": context.plan_name or "",
-        "expire_date": context.expire_at.strftime(_DATE_FORMAT) if context.expire_at else "",
-        "days_left": str(max((context.expire_at - now).days, 0)) if context.expire_at else "",
+        "expire_date": expire_at.strftime(_DATE_FORMAT) if expire_at else "",
+        "days_left": str(max((expire_at - now).days, 0)) if expire_at else "",
         "bonus_days": str(context.bonus_days),
         "points": str(context.points),
         "promocode": promocode_code or "",

@@ -16,6 +16,7 @@ export interface ReferralSettings {
   reward_strategy: ReferralRewardStrategy;
   reward_amounts: ReferralRewardAmounts;
   days_require_paid_subscription: boolean;
+  unlimited_reward_days: number;
   invitee_reward_type: ReferralRewardType;
   invitee_reward_amount: number;
   // pricing's anchor: a PERCENT points reward is counted from the payment in it
@@ -34,6 +35,7 @@ export interface UpdateReferralSettingsRequest {
   reward_strategy?: ReferralRewardStrategy;
   reward_amounts?: ReferralRewardAmounts;
   days_require_paid_subscription?: boolean;
+  unlimited_reward_days?: number;
   invitee_reward_type?: ReferralRewardType;
   invitee_reward_amount?: number;
 }

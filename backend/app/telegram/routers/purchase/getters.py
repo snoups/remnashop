@@ -21,7 +21,12 @@ from app.modules.transactions import QuoteCheckoutUseCase
 from app.modules.users import UserDto
 from app.telegram.dialogs.context import selected_subscription_id
 from app.telegram.dialogs.rendering import TrustedHtml, label_with_icon, render_window_text
-from app.telegram.i18n import format_date, format_period, format_price, get_translator
+from app.telegram.i18n import (
+    format_expiry,
+    format_period,
+    format_price,
+    get_translator,
+)
 from app.telegram.routers.purchase.handlers import (
     PAYMENT_URL_KEY,
     PLAN_CODE_KEY,
@@ -41,7 +46,7 @@ def _original_price(data: dict[str, Any]) -> str:
     # empty without a discount: the confirm text drops the line
     currency = data["currency"]
     base = data.get("base_prices", {}).get(currency)
-    if base is None or Decimal(base) == Decimal(data["prices"][currency]):
+    if base is None or Decimal(base) <= Decimal(data["prices"][currency]):
         return ""
     return format_price(Decimal(base))
 
@@ -60,6 +65,12 @@ async def _renewed(
 ) -> Optional[SubscriptionDto]:
     if _purchase_type(dialog_manager) is not PurchaseType.RENEW:
         return None
+    return await _target(dialog_manager, list_own_subscriptions)
+
+
+async def _target(
+    dialog_manager: DialogManager, list_own_subscriptions: ListOwnSubscriptionsUseCase
+) -> Optional[SubscriptionDto]:
     target_id = selected_subscription_id(dialog_manager)
     owned = await list_own_subscriptions(dialog_manager.middleware_data[USER_KEY])
     return next((s for s in owned if s.id == target_id), None)
@@ -117,9 +128,26 @@ def _discount_notice(runner: TranslatorRunner, percent: int, source: DiscountSou
     return TrustedHtml(render_window_text(runner, "frg-purchase-discount", percent=percent))
 
 
-def _type_notice(runner: TranslatorRunner, purchase_type: PurchaseType) -> str:
+def _type_notice(
+    runner: TranslatorRunner,
+    purchase_type: PurchaseType,
+    days: int,
+    target: Optional[SubscriptionDto],
+) -> str:
     if purchase_type is PurchaseType.NEW:
         return ""
+    if purchase_type is PurchaseType.CHANGE and (
+        days == 0 or (target is not None and target.is_unlimited)
+    ):
+        # an unlimited change credits only from unlimited to unlimited, never in days
+        credited = days == 0 and target is not None and target.is_unlimited
+        return TrustedHtml(
+            render_window_text(
+                runner,
+                "frg-purchase-change-unlimited-notice",
+                kind="credit" if credited else "no_carry",
+            )
+        )
     return TrustedHtml(
         render_window_text(runner, "frg-purchase-type-notice", purchase_type=purchase_type.value)
     )
@@ -317,7 +345,14 @@ async def confirm_getter(
             original_price=_original_price(data),
             currency_symbol=Currency(data["currency"]).symbol,
             method=runner.get(f"gateway-name.{data['gateway_type']}"),
-            type_notice=_type_notice(runner, purchase_type),
+            type_notice=_type_notice(
+                runner,
+                purchase_type,
+                data["duration_days"],
+                await _target(dialog_manager, list_own_subscriptions)
+                if purchase_type is PurchaseType.CHANGE
+                else None,
+            ),
             plan_changed_notice=_plan_changed_notice(runner, plan, renewed) if plan else "",
             terms_notice=terms_notice,
         ),
@@ -361,7 +396,7 @@ async def link_choice_getter(
     owned = [
         s
         for s in await list_own_subscriptions(user)
-        if plan is not None and s.plan_snapshot.plan_id == plan.id
+        if plan is not None and s.plan_snapshot.plan_id == plan.id and not s.is_unlimited
     ]
     return {
         "window_text": render_window_text(
@@ -375,7 +410,7 @@ async def link_choice_getter(
                 "label": label_with_icon(
                     runner,
                     "btn-purchase.link-renew",
-                    subscription=f"{s.plan_snapshot.name} — {format_date(s.expire_at)}",
+                    subscription=f"{s.plan_snapshot.name} — {format_expiry(runner, s.expire_at)}",
                 ),
             }
             for s in owned

@@ -21,6 +21,7 @@ from app.core.enums import (
 )
 from app.modules.plans import PlanDto
 from app.modules.subscriptions.events import StatusSyncSource
+from app.modules.subscriptions.unlimited import is_unlimited_expiry
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -44,6 +45,10 @@ class PlanSnapshot:
     # the last NEW/CHANGE; None on a snapshot written before they existed
     credit_paid: Optional[Decimal] = None
     credit_days: Optional[int] = None
+    # what a renewal into an unlimited term replaced, so its refund can put it back
+    unlimited_from: Optional[datetime] = None
+    unlimited_from_credit_paid: Optional[Decimal] = None
+    unlimited_from_credit_days: Optional[int] = None
 
     def terms_differ(self, other: "PlanSnapshot") -> bool:
         """Whether the two sell different service: limits, traffic strategy or squads."""
@@ -86,6 +91,15 @@ class PlanSnapshot:
             "tag": self.tag,
             "credit_paid": str(self.credit_paid) if self.credit_paid is not None else None,
             "credit_days": self.credit_days,
+            "unlimited_from": (
+                self.unlimited_from.isoformat() if self.unlimited_from is not None else None
+            ),
+            "unlimited_from_credit_paid": (
+                str(self.unlimited_from_credit_paid)
+                if self.unlimited_from_credit_paid is not None
+                else None
+            ),
+            "unlimited_from_credit_days": self.unlimited_from_credit_days,
         }
 
     @classmethod
@@ -108,6 +122,17 @@ class PlanSnapshot:
                 Decimal(data["credit_paid"]) if data.get("credit_paid") is not None else None
             ),
             credit_days=data.get("credit_days"),
+            unlimited_from=(
+                datetime.fromisoformat(data["unlimited_from"])
+                if data.get("unlimited_from") is not None
+                else None
+            ),
+            unlimited_from_credit_paid=(
+                Decimal(data["unlimited_from_credit_paid"])
+                if data.get("unlimited_from_credit_paid") is not None
+                else None
+            ),
+            unlimited_from_credit_days=data.get("unlimited_from_credit_days"),
         )
 
     @classmethod
@@ -170,6 +195,10 @@ class SubscriptionDto(BaseDto, TimestampMixin):
     first_connected_at: Optional[datetime] = None
     paused_by_channel_leave: bool = False
     addon_entitlements: list[AddOnEntitlementDto] = Field(default_factory=list)
+
+    @property
+    def is_unlimited(self) -> bool:
+        return is_unlimited_expiry(self.expire_at)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -323,6 +352,9 @@ class PurchaseSubscriptionDto:
     # edited since the target was sold, its limits, strategy and squads; set for a
     # checkout order, whose snapshot is the plan as sold now, not the target's own
     apply_current_plan: bool = False
+    # CHANGE to unlimited: the old unlimited payment checkout took off the price;
+    # None for an order queued before it was stored, which credits it afresh
+    change_credit: Optional[Decimal] = None
 
 
 @dataclass(frozen=True, kw_only=True)

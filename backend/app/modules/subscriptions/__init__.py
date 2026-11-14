@@ -47,6 +47,7 @@ from app.modules.subscriptions.ports import (
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.rollback import PurchaseRollbackService
 from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
+from app.modules.subscriptions.unlimited import is_unlimited_expiry
 from app.modules.subscriptions.usage import PanelTrafficUsage, traffic_spent_for_good
 from app.modules.subscriptions.usecases import (
     ActivateTrialSubscriptionUseCase,
@@ -120,6 +121,7 @@ __all__ = [
     "TorrentBlockerReportEvent",
     "get_owned_target",
     "get_subscriptions_providers",
+    "is_unlimited_expiry",
     "missing_squads",
     "traffic_spent_for_good",
 ]

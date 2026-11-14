@@ -426,3 +426,144 @@ async def test_rollback_undoes_a_renewal_that_reached_only_the_panel(
     assert abs(panel_expire - bought.expire_at) < timedelta(seconds=1)
     after = await subscription_repository.get_by_id(bought.id)
     assert after.expire_at == bought.expire_at
+
+
+async def _renew_unlimited(
+    purchase: PurchaseSubscriptionUseCase, buyer: UserDto, plan: PlanDto, target: int
+) -> SubscriptionDto:
+    return await purchase(
+        OWNER,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                plan, price_paid=Decimal("5000"), currency=Currency.RUB, duration_days=0
+            ),
+            duration_days=0,
+            price_paid=Decimal("5000"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.RENEW,
+            target_subscription_id=target,
+        ),
+    )
+
+
+def _unlimited_data(fulfilled: Optional[int], target: int) -> PurchaseRollbackDto:
+    return replace(
+        _data(PurchaseType.RENEW, fulfilled, target=target),
+        duration_days=0,
+        price_paid=Decimal("5000"),
+    )
+
+
+async def test_refund_unlimited_renewal_restores_previous_expiry_and_credit(
+    purchase: PurchaseSubscriptionUseCase,
+    service: PurchaseRollbackService,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_store: FakeUserStore,
+) -> None:
+    # nothing but the snapshot is read, so it holds after the idempotency row is pruned
+    buyer = await _buyer(user_repository, 9130)
+    plan = await _plan(plan_repository, "rb_forever")
+    bought = await _buy(purchase, buyer, plan, PurchaseType.NEW)
+    renewed = await _renew_unlimited(purchase, buyer, plan, bought.id)
+    assert renewed.is_unlimited
+
+    await service.rollback(OWNER, _unlimited_data(renewed.id, renewed.id))
+
+    after = await subscription_repository.get_by_id(renewed.id)
+    assert after.expire_at == bought.expire_at
+    assert after.status is SubscriptionStatus.ACTIVE
+    assert after.plan_snapshot.effective_credit_paid == Decimal("300")
+    assert after.plan_snapshot.effective_credit_days == 30
+    assert after.plan_snapshot.unlimited_from is None
+    panel_expire = _panel_expire(remnawave_store, renewed.remnawave_user_id)
+    assert abs(panel_expire - bought.expire_at) < timedelta(seconds=1)
+
+
+async def test_refund_pending_unlimited_renewal_restores_row_expiry(
+    purchase: PurchaseSubscriptionUseCase,
+    service: PurchaseRollbackService,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    remnawave_store: FakeUserStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    buyer = await _buyer(user_repository, 9131)
+    bought = await _buy(
+        purchase, buyer, await _plan(plan_repository, "rb_forever_pin"), PurchaseType.NEW
+    )
+    pinned = bought.expire_at.replace(year=2099)
+    remnawave_store[bought.remnawave_user_id]["expireAt"] = pinned.isoformat()
+
+    async def _pinned(key: str) -> Optional[datetime]:
+        return pinned if key == "order-key" else None
+
+    monkeypatch.setattr(service._idempotency, "find_pending_renew_expire_at", _pinned)
+    data = replace(_unlimited_data(None, bought.id), idempotency_key="order-key")
+
+    await service.rollback(OWNER, data)
+
+    panel_expire = _panel_expire(remnawave_store, bought.remnawave_user_id)
+    assert abs(panel_expire - bought.expire_at) < timedelta(seconds=1)
+
+
+async def test_refund_of_a_finite_renewal_under_a_later_unlimited_one_keeps_it_unlimited(
+    purchase: PurchaseSubscriptionUseCase,
+    service: PurchaseRollbackService,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_store: FakeUserStore,
+) -> None:
+    # the refunded days come off the term the unlimited renewal replaced, not off 2099
+    buyer = await _buyer(user_repository, 9132)
+    plan = await _plan(plan_repository, "rb_finite_under_forever")
+    bought = await _buy(purchase, buyer, plan, PurchaseType.NEW)
+    month = await _buy(purchase, buyer, plan, PurchaseType.RENEW, target=bought.id)
+    forever = await _renew_unlimited(purchase, buyer, plan, bought.id)
+
+    await service.rollback(OWNER, _data(PurchaseType.RENEW, month.id, target=month.id))
+
+    after = await subscription_repository.get_by_id(bought.id)
+    assert after.expire_at == forever.expire_at
+    assert _panel_expire(remnawave_store, bought.remnawave_user_id).year == 2099
+    assert after.plan_snapshot.credit_paid == Decimal("5000")
+    assert after.plan_snapshot.unlimited_from == bought.expire_at
+    assert after.plan_snapshot.unlimited_from_credit_paid == Decimal("300")
+    assert after.plan_snapshot.unlimited_from_credit_days == 30
+
+    await service.rollback(OWNER, _unlimited_data(forever.id, forever.id))
+
+    restored = await subscription_repository.get_by_id(bought.id)
+    assert restored.expire_at == bought.expire_at
+    assert restored.plan_snapshot.effective_credit_paid == Decimal("300")
+
+
+async def test_refund_of_an_unlimited_renewal_made_finite_since_is_blocked(
+    purchase: PurchaseSubscriptionUseCase,
+    service: PurchaseRollbackService,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_store: FakeUserStore,
+) -> None:
+    # the term it replaced is stale: putting it back would drop what came after
+    buyer = await _buyer(user_repository, 9133)
+    plan = await _plan(plan_repository, "rb_forever_made_finite")
+    bought = await _buy(purchase, buyer, plan, PurchaseType.NEW)
+    forever = await _renew_unlimited(purchase, buyer, plan, bought.id)
+    finite = datetime_now() + timedelta(days=200)
+    await subscription_repository.session.execute(
+        update(Subscription).where(Subscription.id == forever.id).values(expire_at=finite)
+    )
+    remnawave_store[forever.remnawave_user_id]["expireAt"] = finite.isoformat()
+    data = _unlimited_data(forever.id, forever.id)
+
+    preview = await service.preview(data)
+    with pytest.raises(ConflictError):
+        await service.rollback(OWNER, data)
+
+    assert preview.blocked_reason == "renewed_or_changed_later"
+    assert (await subscription_repository.get_by_id(forever.id)).expire_at == finite

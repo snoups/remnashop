@@ -225,6 +225,36 @@ async def test_owner_can_grant_subscription(
     assert response.json()["plan_snapshot"]["plan_id"] == plan.id
 
 
+async def test_owner_can_grant_an_unlimited_subscription(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    plan_repository: PlanRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    token = await _token_for(Role.OWNER, user_repository, session_repository, uow, config)
+    recipient = await user_repository.create(CreateUserDto(name="r", telegram_id=9310))
+    plan = await plan_repository.create(
+        CreatePlanDto(
+            public_code="api-grant-forever",
+            name="f",
+            type=PlanType.BOTH,
+            traffic_limit=1,
+            device_limit=1,
+        )
+    )
+
+    response = await client.post(
+        f"{API_V1}/subscriptions",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"user_id": recipient.id, "plan_id": plan.id, "duration_days": 0},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["is_unlimited"] is True
+
+
 async def test_grant_rejects_non_positive_duration(
     client: httpx.AsyncClient,
     user_repository: UserRepository,
@@ -237,7 +267,7 @@ async def test_grant_rejects_non_positive_duration(
     response = await client.post(
         f"{API_V1}/subscriptions",
         headers={"Authorization": f"Bearer {token}"},
-        json={"user_id": 1, "plan_id": 1, "duration_days": 0},
+        json={"user_id": 1, "plan_id": 1, "duration_days": -1},
     )
 
     assert response.status_code == 422
@@ -314,7 +344,16 @@ async def test_owner_can_set_subscription_expiry(
 
     assert response.status_code == 200
     assert response.json()["expire_at"].startswith("2031-06-01")
+    assert response.json()["is_unlimited"] is False
     assert remnawave_store[7101]["expireAt"].startswith("2031-06-01")
+
+    forever = await client.patch(
+        f"{API_V1}/subscriptions/{created.id}",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"expire_at": "2099-06-01T00:00:00Z"},
+    )
+
+    assert forever.json()["is_unlimited"] is True
 
 
 async def test_owner_can_disable_and_enable_subscription(

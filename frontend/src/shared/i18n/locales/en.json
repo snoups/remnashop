@@ -3127,6 +3127,8 @@
       },
       "daysRequirePaidLabel": "Award days only after the first payment",
       "daysRequirePaidHint": "Days aren’t credited to someone who has never paid for a subscription.",
+      "unlimitedRewardDaysLabel": "Unlimited counts as",
+      "unlimitedRewardDaysHint": "A percent of days needs a number of days: a purchase of an unlimited subscription counts as this many.",
       "invitee": {
         "title": "Invited user reward",
         "description": {
@@ -3287,6 +3289,7 @@
       "rewardPlanPlaceholder": "Select a plan",
       "rewardPlanEmpty": "No plans",
       "rewardDurationDaysLabel": "Duration",
+      "rewardDurationUnlimitedHint": "0 gives the subscription for good",
       "saved": "Promocode created.",
       "error": "Failed to create the promocode.",
       "daysSuffix": "days",
@@ -3391,6 +3394,7 @@
     "perDays_one": "/ {{count}} day",
     "perDays_other": "/ {{count}} days",
     "daysShort": "{{count, number}}d",
+    "forever": "Forever",
     "devices_one": "{{count}} device",
     "devices_other": "{{count}} devices",
     "create": {
@@ -3559,6 +3563,7 @@
       "rollback": {
         "NEW": "The subscription from this purchase is deleted.",
         "RENEW": "The subscription loses the {{days}} days this renewal added.",
+        "RENEW_UNLIMITED": "The subscription goes back to the end date it had before this renewal made it unlimited.",
         "CHANGE": "The previous plan comes back; the new one is deleted."
       },
       "changeLosesCredits": "Days, add-ons and edits made after the change are lost.",
@@ -3628,6 +3633,7 @@
       "notIssued": "Not issued yet",
       "externalPaymentId": "External payment ID",
       "discount": "{{percent}}% off · {{source}}",
+      "changeCredit": "credit {{amount}}",
       "planDiscount": "{{percent}}% off · plan",
       "customerEmail": "Receipt email",
       "idempotencyKey": "Idempotency key",
@@ -3749,11 +3755,13 @@
       "done": "Subscription granted.",
       "error": "Failed to grant the subscription."
     },
+    "noExpiry": "No end date",
     "duration": {
       "days_one": "{{count}} day",
       "days_other": "{{count}} days",
       "custom": "Custom duration",
       "customLabel": "Days",
+      "keepUnlimited": "Keep current (no end date)",
       "keep": "Keep current (until {{date}})"
     },
     "plan": {
@@ -4489,6 +4497,7 @@
     "PLAN_TRIAL_BADGE": "A trial plan can’t have a badge.",
     "PLAN_TRIAL_EXISTING_ACCESS": "A trial plan can’t be limited to existing users.",
     "PLAN_TRIAL_SINGLE_DURATION": "A trial plan has exactly one duration.",
+    "PLAN_TRIAL_UNLIMITED_DURATION": "A trial plan can’t be unlimited.",
     "PLAN_USED_BY_PROMOCODE": "The plan is still used by a promocode.",
     "POINTS_BELOW_ZERO": "Points can’t go below zero.",
     "POINTS_LIMIT_EXCEEDED": "Points can’t exceed the balance limit.",
@@ -4546,6 +4555,7 @@
     "SUBSCRIPTION_NOT_FOUND": "Subscription not found.",
     "SUBSCRIPTION_ROLLBACK_BLOCKED": "The subscription changed after this purchase and can’t be rolled back.",
     "SUBSCRIPTION_STATUS_TRANSITION_INVALID": "This subscription status change isn’t allowed.",
+    "SUBSCRIPTION_UNLIMITED": "An unlimited subscription can’t be renewed or extended.",
     "SVG_UNSAFE": "The SVG must be plain markup with a viewBox, without scripts.",
     "TARGET_SUBSCRIPTION_FORBIDDEN": "A new purchase can’t target an existing subscription.",
     "TARGET_SUBSCRIPTION_NOT_ACTIVE": "Choose an active subscription.",

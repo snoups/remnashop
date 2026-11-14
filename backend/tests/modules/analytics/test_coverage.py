@@ -27,3 +27,20 @@ def test_shift_months_clamps_the_day() -> None:
     assert shift_months(datetime(2026, 1, 31, 12, tzinfo=TIMEZONE), 1) == datetime(
         2026, 2, 28, 12, tzinfo=TIMEZONE
     )
+
+
+def test_an_unlimited_payment_covers_far_ahead() -> None:
+    t0 = datetime_now()
+
+    segments = paid_coverage([(t0, 0)])
+
+    assert is_covered(segments, t0 + timedelta(days=4000))
+
+
+def test_unlimited_payments_stop_stacking_after_the_first() -> None:
+    # free switches between unlimited plans are paid orders too
+    t0 = datetime_now()
+
+    segments = paid_coverage([(t0 + timedelta(minutes=n), 0) for n in range(100)])
+
+    assert segments == [(t0, t0 + timedelta(days=36500))]

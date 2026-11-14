@@ -3217,6 +3217,8 @@
       },
       "daysRequirePaidLabel": "Начислять дни только после первой оплаты",
       "daysRequirePaidHint": "Пользователю, который ни разу не оплачивал подписку, дни не начисляются.",
+      "unlimitedRewardDaysLabel": "Безлимит считать как",
+      "unlimitedRewardDaysHint": "Процент считается от дней, а у бессрочной подписки их нет: её покупка считается как столько дней.",
       "invitee": {
         "title": "Награда приглашённому",
         "description": {
@@ -3385,6 +3387,7 @@
       "rewardPlanPlaceholder": "Выберите план",
       "rewardPlanEmpty": "Нет планов",
       "rewardDurationDaysLabel": "Длительность",
+      "rewardDurationUnlimitedHint": "0 — подписка навсегда",
       "saved": "Промокод создан.",
       "error": "Не удалось создать промокод.",
       "daysSuffix": "дн.",
@@ -3491,6 +3494,7 @@
     "perDays_many": "/ {{count}} дней",
     "perDays_other": "/ {{count}} дня",
     "daysShort": "{{count, number}} дн.",
+    "forever": "Навсегда",
     "devices_one": "{{count}} устройство",
     "devices_few": "{{count}} устройства",
     "devices_many": "{{count}} устройств",
@@ -3663,6 +3667,7 @@
       "rollback": {
         "NEW": "Подписка из этой покупки будет удалена.",
         "RENEW": "Подписка потеряет {{days}} дн., добавленных этим продлением.",
+        "RENEW_UNLIMITED": "Подписке вернётся дата окончания, которая была до этого продления навсегда.",
         "CHANGE": "Вернётся прежний план, новый будет удалён."
       },
       "changeLosesCredits": "Дни, дополнения и правки, сделанные после смены, пропадут.",
@@ -3732,6 +3737,7 @@
       "notIssued": "Ещё не выдана",
       "externalPaymentId": "Внешний ID платежа",
       "discount": "Скидка {{percent}}% · {{source}}",
+      "changeCredit": "зачёт {{amount}}",
       "planDiscount": "Скидка {{percent}}% · план",
       "customerEmail": "Почта для чека",
       "idempotencyKey": "Ключ идемпотентности",
@@ -3855,6 +3861,7 @@
       "done": "Подписка выдана.",
       "error": "Не удалось выдать подписку."
     },
+    "noExpiry": "Бессрочно",
     "duration": {
       "days_one": "{{count}} день",
       "days_few": "{{count}} дня",
@@ -3862,6 +3869,7 @@
       "days_other": "{{count}} дня",
       "custom": "Своя длительность",
       "customLabel": "Дней",
+      "keepUnlimited": "Оставить текущий (бессрочно)",
       "keep": "Оставить текущий (до {{date}})"
     },
     "plan": {
@@ -4603,6 +4611,7 @@
     "PLAN_TRIAL_BADGE": "У пробного плана не может быть бейджа.",
     "PLAN_TRIAL_EXISTING_ACCESS": "Пробный план нельзя открыть только существующим пользователям.",
     "PLAN_TRIAL_SINGLE_DURATION": "У пробного плана ровно одна длительность.",
+    "PLAN_TRIAL_UNLIMITED_DURATION": "Пробный план не может быть бессрочным.",
     "PLAN_USED_BY_PROMOCODE": "План ещё используется в промокоде.",
     "POINTS_BELOW_ZERO": "Баллы не могут стать меньше нуля.",
     "POINTS_LIMIT_EXCEEDED": "Баллы не могут превышать предельный баланс.",
@@ -4660,6 +4669,7 @@
     "SUBSCRIPTION_NOT_FOUND": "Подписка не найдена.",
     "SUBSCRIPTION_ROLLBACK_BLOCKED": "Подписка изменилась после этой покупки, откатить её нельзя.",
     "SUBSCRIPTION_STATUS_TRANSITION_INVALID": "Такая смена статуса подписки недопустима.",
+    "SUBSCRIPTION_UNLIMITED": "Бессрочную подписку нельзя продлить.",
     "SVG_UNSAFE": "SVG должен быть простой разметкой с viewBox, без скриптов.",
     "TARGET_SUBSCRIPTION_FORBIDDEN": "Новая покупка не может относиться к существующей подписке.",
     "TARGET_SUBSCRIPTION_NOT_ACTIVE": "Выберите активную подписку.",

@@ -208,6 +208,7 @@ async def test_quote_returns_the_price_breakdown(
     assert response.status_code == 200
     assert set(response.json()) == {
         "base_price",
+        "change_credit",
         "plan_discount_percent",
         "discount_percent",
         "discount_source",

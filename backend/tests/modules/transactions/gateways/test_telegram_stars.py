@@ -58,6 +58,19 @@ async def test_create_payment_returns_the_invoice_link(monkeypatch: pytest.Monke
     assert session.proxy == "socks5://proxy:1080"
 
 
+async def test_a_test_payment_invoice_names_no_term(monkeypatch: pytest.MonkeyPatch) -> None:
+    # it buys nothing: its 0 days aren't "unlimited"
+    session = use_fake_bot(monkeypatch, FakeBotSession({"createInvoiceLink": "https://t.me/$t"}))
+    order = make_order(
+        currency=Currency.XTR, final_price=Decimal("1"), duration_days=0, is_test=True
+    )
+
+    await _gateway().create_payment(order)
+
+    [call] = session.called("createInvoiceLink")
+    assert call["description"] == order.plan_snapshot.name
+
+
 async def test_create_payment_raises_on_a_refusal(monkeypatch: pytest.MonkeyPatch) -> None:
     refused = _refused("bad")
     use_fake_bot(monkeypatch, FakeBotSession({"createInvoiceLink": lambda params: refused}))

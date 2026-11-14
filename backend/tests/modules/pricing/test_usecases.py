@@ -580,6 +580,54 @@ async def test_adjust_ladder_prices_durations_from_the_30_day_price(
     assert prices == {30: Decimal("3.00"), 90: Decimal("8.10")}  # 3 * 3 months - 10%
 
 
+async def test_adjust_ladder_skips_unlimited_duration(
+    plan_repository: PlanRepository,
+    addon_repository: AddOnRepository,
+    pricing_repository: PricingRepository,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+) -> None:
+    await pricing_repository.get_rate_table()
+    plan = await _seed_ladder_plan(plan_repository)
+    plan = await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=plan.id,
+            durations=[
+                SetPlanDurationDto(days=30, order_index=0, base_price=Decimal("1.00")),
+                SetPlanDurationDto(days=0, order_index=1, base_price=Decimal("50.00")),
+            ],
+        )
+    )
+    use_case = AdjustBasePricesUseCase(
+        plan_repository, addon_repository, pricing_repository, uow, event_publisher
+    )
+    ids = [duration.id for duration in plan.durations]
+
+    laddered = await use_case(
+        OWNER,
+        AdjustBasePricesDto(
+            scope=PriceAdjustScope.SELECTED,
+            mode=PriceAdjustMode.LADDER,
+            price=Decimal("3.00"),
+            plan_duration_ids=ids,
+        ),
+    )
+    prices = {row.days: row.base_price for row in laddered.plans if row.plan_id == plan.id}
+    assert prices == {30: Decimal("3.00"), 0: Decimal("50.00")}
+
+    multiplied = await use_case(
+        OWNER,
+        AdjustBasePricesDto(
+            scope=PriceAdjustScope.SELECTED,
+            mode=PriceAdjustMode.MULTIPLY,
+            factor=Decimal("2"),
+            plan_duration_ids=ids,
+        ),
+    )
+    prices = {row.days: row.base_price for row in multiplied.plans if row.plan_id == plan.id}
+    assert prices[0] == Decimal("100.00")
+
+
 async def test_adjust_set_price_scales_or_resets_pins(
     plan_repository: PlanRepository,
     addon_repository: AddOnRepository,

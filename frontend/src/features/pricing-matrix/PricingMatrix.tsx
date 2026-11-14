@@ -17,6 +17,7 @@ import { BulkAdjustButton } from "@features/pricing-matrix/BulkAdjustButton";
 import { PricingGuideDialog } from "@features/pricing-matrix/PricingGuideDialog";
 import { usePermissions } from "@entities/user/use-current-user";
 import { getErrorMessage } from "@shared/api/http";
+import { formatDuration } from "@shared/lib/duration";
 import { toast } from "@shared/lib/toast";
 import { blockNonDecimalKeys } from "@shared/lib/number-input";
 import { GroupToggle } from "@shared/ui/GroupToggle";
@@ -349,7 +350,7 @@ function MatrixRow({
       }`}
     >
       <Cell className="min-w-40 font-medium text-foreground">
-        {row.days === null ? row.name : t("plans.daysShort", { count: row.days })}
+        {row.days === null ? row.name : formatDuration(row.days, t)}
         {row.is_free_trial && (
           <span className="block text-xs font-normal text-muted-foreground">{t("pricing.matrix.freeTrial")}</span>
         )}

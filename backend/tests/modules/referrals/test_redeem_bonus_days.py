@@ -384,6 +384,32 @@ async def test_redeem_refuses_a_plan_that_disallows_bonus_days(
     assert await _bonus_days(user_repository, user.id) == 5
 
 
+async def test_bonus_days_refuse_an_unlimited_subscription(
+    redeem: RedeemBonusDaysUseCase,
+    purchase_subscription_use_case: PurchaseSubscriptionUseCase,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    uow: UnitOfWork,
+) -> None:
+    plan = await _plan(plan_repository)
+    user = await _user_with_days(user_repository, 940_012, 5)
+    subscription = await _paid_subscription(purchase_subscription_use_case, plan, user)
+    await subscription_repository.session.execute(
+        update(Subscription)
+        .where(Subscription.id == subscription.id)
+        .values(expire_at=subscription.expire_at.replace(year=2099))
+    )
+    list_targets = ListBonusDaysTargetsUseCase(subscription_repository, redeem._targets, uow)
+
+    assert await list_targets(user) == []
+    with pytest.raises(ValidationError) as error:
+        await redeem(user, RedeemBonusDaysDto(subscription_id=subscription.id, days=2))
+
+    assert error.value.code is ErrorCode.SUBSCRIPTION_UNLIMITED
+    assert await _bonus_days(user_repository, user.id) == 5
+
+
 async def test_redeem_is_refused_when_the_subscription_is_disabled_mid_redemption(
     redeem: RedeemBonusDaysUseCase,
     purchase_subscription_use_case: PurchaseSubscriptionUseCase,

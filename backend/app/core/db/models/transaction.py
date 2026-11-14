@@ -74,6 +74,10 @@ class Transaction(BaseSql, TimestampMixin):
     # the plan's promotion, applied before discount_percent
     plan_discount_percent: Mapped[int] = mapped_column(default=0, server_default="0")
     final_price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    # what the unlimited subscription being changed was paid, taken off base_price
+    change_credit: Mapped[Decimal] = mapped_column(
+        Numeric(10, 2), default=Decimal(0), server_default="0"
+    )
     anchor_base_price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     anchor_final_price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     # migrated without a currency rate: the anchor amounts are the nominal ones

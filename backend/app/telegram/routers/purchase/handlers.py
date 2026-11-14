@@ -112,6 +112,9 @@ def checkout_quoter(
                 currency=currency,
                 plan_code=query.plan_code,
                 renew_subscription_id=query.renew_subscription_id,
+                change_subscription_id=selected_subscription_id(manager)
+                if manager.dialog_data.get("purchase_type") == PurchaseType.CHANGE.value
+                else None,
             ),
         )
 
@@ -180,7 +183,8 @@ async def _start_by_link(
     plan = catalog.plans[0]
     manager.dialog_data[PLAN_CODE_KEY] = code
     manager.dialog_data["plan_id"] = plan.id
-    if any(s.plan_snapshot.plan_id == plan.id for s in subscriptions):
+    # an unlimited one has nothing to renew
+    if any(s.plan_snapshot.plan_id == plan.id and not s.is_unlimited for s in subscriptions):
         manager.dialog_data[LINK_CHOICE_KEY] = True
         await manager.switch_to(Purchase.LINK_CHOICE)
     else:
@@ -232,9 +236,10 @@ async def select_duration(
     data["plan_name"] = plan.name
     data["plan_icon_id"] = plan.icon_emoji_id
     data["plan_icon_fallback"] = plan.icon_emoji_fallback
-    # what checkout charges, and the price before discounts beside it
+    # what checkout charges, and the price before discounts beside it: a plan
+    # change's credit comes off first and isn't a discount
     data["prices"] = {c.value: str(q.final_price) for c, q in quotes.items()}
-    data["base_prices"] = {c.value: str(q.base_price) for c, q in quotes.items()}
+    data["base_prices"] = {c.value: str(q.base_price - q.change_credit) for c, q in quotes.items()}
     # the same discount whatever the currency
     first = quotes[methods[0].currency]
     data["discount_percent"] = first.discount_percent

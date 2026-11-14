@@ -102,7 +102,7 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
             return
 
         percent_base = (
-            self._percent_base(order, settings.reward_type)
+            self._percent_base(order, settings)
             if settings.reward_strategy is ReferralRewardStrategy.PERCENT
             else None
         )
@@ -176,9 +176,11 @@ class AssignReferralRewardsUseCase(UseCase[AssignReferralRewardsDto, None]):
         return True
 
     @staticmethod
-    def _percent_base(order: TransactionDto, reward_type: ReferralRewardType) -> Decimal:
-        if reward_type is ReferralRewardType.EXTRA_DAYS:
-            return Decimal(order.duration_days)
+    def _percent_base(order: TransactionDto, settings: ReferralSettingsDto) -> Decimal:
+        if settings.reward_type is ReferralRewardType.EXTRA_DAYS:
+            # an unlimited order has no days of its own to take a percent of
+            days = order.duration_days or settings.unlimited_reward_days
+            return Decimal(days)
         # points are anchor-currency units, whatever the buyer paid in
         return order.anchor_final_price
 

@@ -269,6 +269,49 @@ async def test_catalog_excludes_pii_and_infra_fields_for_active_plan(
     assert "is_active" not in plan
 
 
+async def test_catalog_serves_an_unlimited_duration(
+    client: httpx.AsyncClient,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    uow: UnitOfWork,
+    config: AppConfig,
+) -> None:
+    owner_token = await _token_for(Role.OWNER, user_repository, session_repository, uow, config)
+    owner_headers = {"Authorization": f"Bearer {owner_token}"}
+    plan_id = (
+        await client.post(
+            f"{API_V1}/plans",
+            headers=owner_headers,
+            json={"name": "Forever", "type": "BOTH", "traffic_limit": 100, "device_limit": 3},
+        )
+    ).json()["id"]
+    durations = await client.put(
+        f"{API_V1}/plans/{plan_id}/durations",
+        headers=owner_headers,
+        json={
+            "durations": [
+                {"days": 0, "order_index": 0, "base_price": "500"},
+                {"days": 30, "order_index": 1, "base_price": "9.99"},
+            ]
+        },
+    )
+    assert durations.status_code == 200
+    await client.put(
+        f"{API_V1}/plans/{plan_id}/squads",
+        headers=owner_headers,
+        json={"internal_squads": ["11111111-1111-1111-1111-111111111111"], "external_squad": None},
+    )
+    await client.patch(f"{API_V1}/plans/{plan_id}", headers=owner_headers, json={"is_active": True})
+
+    user_token = await _token_for(Role.USER, user_repository, session_repository, uow, config)
+    response = await client.get(
+        f"{API_V1}/plans/catalog", headers={"Authorization": f"Bearer {user_token}"}
+    )
+
+    assert response.status_code == 200
+    assert [d["days"] for d in response.json()["items"][0]["durations"]] == [0, 30]
+
+
 async def test_catalog_refuses_an_api_token(
     client: httpx.AsyncClient, session: AsyncSession, uow: UnitOfWork
 ) -> None:

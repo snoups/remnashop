@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Final, Literal, Optional
 
-from app.core.constants import DEFAULT_PAGE_SIZE
+from app.core.constants import DEFAULT_PAGE_SIZE, ZERO_AMOUNT
 from app.core.dto import BaseDto, TimestampMixin
 from app.core.enums import (
     Currency,
@@ -37,6 +37,8 @@ class PriceQuote:
     anchor_final_price: Decimal
     discount_promocode_id: Optional[int] = None
     plan_discount_percent: int = 0
+    # what the unlimited subscription being changed was paid, off base_price
+    change_credit: Decimal = ZERO_AMOUNT
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -66,6 +68,7 @@ class TransactionDto(BaseDto, TimestampMixin):
     discount_source: DiscountSource = DiscountSource.NONE
     plan_discount_percent: int = 0
     final_price: Decimal
+    change_credit: Decimal = ZERO_AMOUNT
     anchor_base_price: Decimal
     anchor_final_price: Decimal
     discount_promocode_id: Optional[int] = None
@@ -109,6 +112,7 @@ class CreateTransactionDto:
     expires_at: datetime
     previous_plan_snapshot: Optional[PlanSnapshot] = None
     is_test: bool = False
+    change_credit: Decimal = ZERO_AMOUNT
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -157,6 +161,8 @@ class QuoteCheckoutDto:
     currency: Currency
     plan_code: Optional[str] = None
     renew_subscription_id: Optional[int] = None
+    # a CHANGE quote: the subscription being changed, for its credit
+    change_subscription_id: Optional[int] = None
 
 
 class CheckoutResultDto(BaseDto):

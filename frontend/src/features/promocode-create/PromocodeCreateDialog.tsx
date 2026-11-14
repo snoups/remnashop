@@ -126,7 +126,8 @@ function PromocodeCreateDialogBody({
     } else if (rewardType === "TRAFFIC" || rewardType === "DEVICES") {
       payload.reward_addon_id = rewardAddonId ? Number(rewardAddonId) : null;
     } else if (rewardType === "SUBSCRIPTION") {
-      const rewardDurationDaysValue = parseRequiredInt(rewardDurationDays, 1);
+      // 0 grants an unlimited subscription
+      const rewardDurationDaysValue = parseRequiredInt(rewardDurationDays, 0);
       if (rewardDurationDaysValue === undefined) {
         toast.error(t("errors.invalidNumber"));
         return;
@@ -309,12 +310,16 @@ function PromocodeCreateDialogBody({
                     />
                   )}
                 </Field>
-                <Field label={t("promocodes.create.rewardDurationDaysLabel")} htmlFor="promo-reward-duration">
+                <Field
+                  label={t("promocodes.create.rewardDurationDaysLabel")}
+                  htmlFor="promo-reward-duration"
+                  hint={t("promocodes.create.rewardDurationUnlimitedHint")}
+                >
                   <Input
                     id="promo-reward-duration"
                     type="number"
                     onKeyDown={blockNonIntegerKeys}
-                    min={1}
+                    min={0}
                     step="1"
                     value={rewardDurationDays}
                     onChange={(event) => setRewardDurationDays(event.target.value)}

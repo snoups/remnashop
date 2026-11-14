@@ -67,7 +67,7 @@ def _bundle(locale: Locale) -> FluentBundle:
 
 def _render(locale: Locale, event_type: str, args: dict[str, Union[str, int]]) -> str:
     body, errors = _bundle(locale).format(
-        message_id(f"Customer{event_type}"), customer_render_args(args, locale)
+        message_id(f"Customer{event_type}"), customer_render_args(args, locale, event_type)
     )
     assert errors == [], (locale, event_type, errors)
     return str(body)
@@ -257,3 +257,40 @@ def test_template_text(
     locale: Locale, event_type: str, args: dict[str, Union[str, int]], body: str
 ) -> None:
     assert _render(locale, event_type, args) == body
+
+
+@pytest.mark.parametrize(
+    ("locale", "args", "expected"),
+    [
+        (
+            Locale.RU,
+            {"duration_days": 0, "plan_name": "Про"},
+            "Подписка «Про» навсегда. Подключите устройство, чтобы начать пользоваться.",
+        ),
+        (
+            Locale.RU,
+            {"duration_days": 30, "plan_name": "Про"},
+            "Подписка «Про» на 30 дней. Подключите устройство, чтобы начать пользоваться.",
+        ),
+        # a feed row stored before the name was
+        (
+            Locale.RU,
+            {"duration_days": 3},
+            "Подписка на 3 дня. Подключите устройство, чтобы начать пользоваться.",
+        ),
+        (
+            Locale.EN,
+            {"duration_days": 0, "plan_name": "Pro"},
+            "“Pro” subscription forever. Connect a device to start using it.",
+        ),
+        (
+            Locale.EN,
+            {"duration_days": 1},
+            "Subscription for 1 day. Connect a device to start using it.",
+        ),
+    ],
+)
+def test_a_grant_names_its_plan_when_it_knows_it(
+    locale: Locale, args: dict[str, Union[str, int]], expected: str
+) -> None:
+    assert _render(locale, "SubscriptionGrantedEvent", args) == expected

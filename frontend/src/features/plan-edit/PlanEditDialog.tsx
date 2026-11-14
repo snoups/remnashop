@@ -201,7 +201,8 @@ function PlanEditDialogBody({
     const parsedDeviceLimit = hasDevices ? parseRequiredInt(deviceLimit, 1) : 0;
     const parsedDurations = durations.map((row) => ({
       ...row,
-      parsedDays: parseRequiredInt(row.days, 1),
+      // 0 is unlimited
+      parsedDays: parseRequiredInt(row.days, 0),
     }));
     if (
       parsedTrafficLimit === undefined ||
@@ -463,6 +464,9 @@ function PlanEditDialogBody({
                         {days}
                       </PresetButton>
                     ))}
+                    {!isTrial && !usedDays.has(0) && (
+                      <PresetButton onClick={() => addDuration("0")}>{t("plans.forever")}</PresetButton>
+                    )}
                     <PresetButton onClick={() => addDuration("")}>{t("plans.edit.customDuration")}</PresetButton>
                   </div>
                 )}
@@ -605,16 +609,20 @@ function DurationRowItem({
       >
         <GripVertical className="size-3.5" />
       </button>
-      <Input
-        type="number"
-        onKeyDown={blockNonIntegerKeys}
-        min={1}
-        step="1"
-        value={row.days}
-        disabled={disabled}
-        onChange={(event) => onChange({ days: event.target.value })}
-        suffix={t("plans.edit.daysSuffix")}
-      />
+      {row.days === "0" ? (
+        <Input value={t("plans.forever")} readOnly disabled={disabled} />
+      ) : (
+        <Input
+          type="number"
+          onKeyDown={blockNonIntegerKeys}
+          min={1}
+          step="1"
+          value={row.days}
+          disabled={disabled}
+          onChange={(event) => onChange({ days: event.target.value })}
+          suffix={t("plans.edit.daysSuffix")}
+        />
+      )}
       <Input
         type="number"
         onKeyDown={blockNonDecimalKeys}

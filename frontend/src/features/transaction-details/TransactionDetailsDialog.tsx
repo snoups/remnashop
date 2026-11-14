@@ -41,6 +41,7 @@ import {
 import { usePermissions } from "@entities/user/use-current-user";
 import { userNameField } from "@entities/user/display";
 import { getErrorMessage } from "@shared/api/http";
+import { formatDuration } from "@shared/lib/duration";
 import { toast } from "@shared/lib/toast";
 import { currencySymbol, formatMoney } from "@shared/lib/format";
 import { formatDateTime } from "@shared/lib/relative-time";
@@ -153,11 +154,19 @@ function TransactionDetailsDialogBody({
     }
   };
 
-  const plan = `${order.plan_snapshot.name} · ${t("plans.daysShort", { count: order.duration_days })}`;
+  // what an unlimited subscription changed to another unlimited plan took off the price
+  const hasCredit = Number(order.change_credit) > 0;
+  // a test payment buys no term, and its 0 isn't "forever"
+  const period = order.is_test ? none : formatDuration(order.duration_days, t);
+  const plan = order.is_test ? order.plan_snapshot.name : `${order.plan_snapshot.name} · ${period}`;
   const previous = order.previous_plan_snapshot;
+  // a panel import (plan 0) stores 0 days with no term known
   const previousPlan =
     previous &&
-    [previous.name, previous.duration_days && t("plans.daysShort", { count: previous.duration_days })]
+    [
+      previous.name,
+      previous.duration_days !== undefined && previous.plan_id !== 0 && formatDuration(previous.duration_days, t),
+    ]
       .filter(Boolean)
       .join(" · ");
   const purchaseType = t(`transactions.purchaseType.${order.purchase_type}`);
@@ -186,10 +195,11 @@ function TransactionDetailsDialogBody({
               glass
               label={t("transactions.details.total")}
               value={money(order.final_price)}
-              valueSuffix={hasDiscount(order) && <s>{money(order.base_price)}</s>}
+              valueSuffix={(hasDiscount(order) || hasCredit) && <s>{money(order.base_price)}</s>}
               hint={
-                hasDiscount(order)
+                hasDiscount(order) || hasCredit
                   ? [
+                      hasCredit && t("transactions.details.changeCredit", { amount: money(order.change_credit) }),
                       order.plan_discount_percent > 0 &&
                         t("transactions.details.planDiscount", { percent: order.plan_discount_percent }),
                       order.discount_percent > 0 &&
@@ -203,7 +213,7 @@ function TransactionDetailsDialogBody({
                   : t("transactions.details.noDiscount")
               }
             />
-            <KpiTile glass label={t("transactions.details.period")} value={t("plans.daysShort", { count: order.duration_days })} hint={purchaseType} />
+            <KpiTile glass label={t("transactions.details.period")} value={period} hint={purchaseType} />
           </div>
 
           <DialogCard title={t("transactions.details.sections.payment")} icon={Wallet}>

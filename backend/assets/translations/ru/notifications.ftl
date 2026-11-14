@@ -27,7 +27,10 @@ ntf-subscription-purchased = { $user } купил подписку ({ $purchase_
            *[other] Покупка подписки!
         }
     }
-ntf-subscription-renewed = { $user } продлил подписку на { $duration_days } дн.
+ntf-subscription-renewed = { $duration_days ->
+        [0] { $user } продлил подписку бессрочно
+       *[other] { $user } продлил подписку на { $duration_days } дн.
+    }
     .title = Продление подписки!
 ntf-transaction-refunded = Заказ #{ $order_id }: возврат { $amount } { $currency } через { $gateway_type }
     .title = Платёж возвращён!
@@ -67,11 +70,14 @@ ntf-customer-subscription-purchased = Чтобы начать пользоват
         [yes] 🎁
        *[no] ✅
     }
-ntf-customer-subscription-renewed = Ваша подписка продлена на { $duration_days ->
-        [one] { $duration_days } день
-        [few] { $duration_days } дня
-       *[other] { $duration_days } дней
-    }.
+ntf-customer-subscription-renewed = { $duration_days ->
+        [0] Ваша подписка теперь бессрочная.
+       *[other] Ваша подписка продлена на { $duration_days ->
+            [one] { $duration_days } день
+            [few] { $duration_days } дня
+           *[other] { $duration_days } дней
+        }.
+    }
     .title = { $paid ->
         [yes] Оплата прошла успешно!
        *[no] Подписка продлена
@@ -93,12 +99,18 @@ ntf-customer-subscription-add-on-granted = { $addon_type ->
     }
     .title = Дополнение активировано
     .emoji = 🎁
-ntf-customer-subscription-granted = Доступ открыт на { $duration_days ->
-        [one] { $duration_days } день
-        [few] { $duration_days } дня
-       *[other] { $duration_days } дней
-    }. Подключите устройство, чтобы начать пользоваться.
-    .title = Подписка выдана
+ntf-customer-subscription-granted = { $has_plan_name ->
+        [yes] Подписка «{ $plan_name }»
+       *[other] Подписка
+    } { $duration_days ->
+        [0] навсегда.
+       *[other] на { $duration_days ->
+            [one] { $duration_days } день
+            [few] { $duration_days } дня
+           *[other] { $duration_days } дней
+        }.
+    } Подключите устройство, чтобы начать пользоваться.
+    .title = Вам выдана подписка
     .emoji = 🎁
 ntf-customer-transaction-refunded = { $money } вернутся тем же способом, которым вы платили.
     .title = Платёж возвращён
@@ -464,6 +476,7 @@ ntf-telegram-promocode-type = { $value ->
         [PURCHASE_DISCOUNT] Скидка на покупку
        *[other] { $value }
     }
+ntf-telegram-unlimited = бессрочно
 ntf-telegram-days = { $count ->
         [one] { $count } день
         [few] { $count } дня

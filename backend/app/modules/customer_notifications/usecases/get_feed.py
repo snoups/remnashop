@@ -39,7 +39,7 @@ class GetCustomerFeedUseCase(UseCase[None, CustomerFeedDto, UserDto]):
             title, body = renderer.render(
                 actor.language,
                 f"Customer{row.event_type}",
-                customer_render_args(row.args, actor.language),
+                customer_render_args(row.args, actor.language, row.event_type),
             )
             if not body:  # the event type lost its translation
                 continue

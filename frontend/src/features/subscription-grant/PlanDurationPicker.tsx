@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { Plan } from "@entities/plans/api";
 import type { DurationChoice } from "@features/subscription-grant/duration";
+import { formatDurationLong } from "@shared/lib/duration";
 import { blockNonIntegerKeys } from "@shared/lib/number-input";
 import { Field } from "@shared/ui/glass/Field";
 import { Input } from "@shared/ui/glass/Input";
@@ -29,8 +30,12 @@ export function PlanDurationPicker({ plans, planId, onPlanChange, duration, onDu
     ...(keepLabel ? [{ value: KEEP, label: keepLabel }] : []),
     ...(plan?.durations ?? []).map((item) => ({
       value: String(item.days),
-      label: t("subscriptions.duration.days", { count: item.days }),
+      label: formatDurationLong(item.days, t),
     })),
+    // an admin may give any plan for good, a trial excepted
+    ...(plan && !plan.is_trial && !plan.durations.some((item) => item.days === 0)
+      ? [{ value: "0", label: formatDurationLong(0, t) }]
+      : []),
     { value: CUSTOM, label: t("subscriptions.duration.custom") },
   ];
 

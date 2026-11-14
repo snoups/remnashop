@@ -10,6 +10,8 @@ import { FieldHint } from "@shared/ui/FieldHint";
 import { PURCHASE_TYPE_BAR_CLASS } from "@features/user-details/purchase-type";
 import { DAY_MS } from "@shared/lib/period";
 
+const UNLIMITED_TAIL_DAYS = 30;
+
 // narrower segments/gaps drop their text label, it would overlap the neighbour
 const MIN_LABEL_PCT = 10;
 const MAX_MONTH_TICKS = 8;
@@ -49,7 +51,11 @@ function buildSegments(paid: TransactionItem[]): Segment[] {
     }
     const created = new Date(order.created_at).getTime();
     const start = order.purchase_type === "RENEW" ? Math.max(created, chainEnd.get(chain) ?? 0) : created;
-    const end = start + order.duration_days * DAY_MS;
+    // an unlimited order has no end: its bar runs a month past today, to the axis edge
+    const end =
+      order.duration_days === 0
+        ? Math.max(start, Date.now()) + UNLIMITED_TAIL_DAYS * DAY_MS
+        : start + order.duration_days * DAY_MS;
     if (order.purchase_type === "CHANGE") {
       for (const earlier of placed) if (earlier.chain === chain) earlier.end = Math.min(earlier.end, start);
     }

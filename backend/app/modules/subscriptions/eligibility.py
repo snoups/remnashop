@@ -123,6 +123,8 @@ class PurchaseEligibility:
         # availability decides who may buy a plan, not who may keep it:
         # switching the plan off is what stops its renewals
         target = await get_owned_target(self._subscription_repository, subscription_id, user_id)
+        if target.is_unlimited:
+            return []
         return [
             plan for plan in plans if plan.is_active and plan.id == target.plan_snapshot.plan_id
         ]

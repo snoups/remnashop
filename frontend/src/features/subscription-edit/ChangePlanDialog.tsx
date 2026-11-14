@@ -8,6 +8,7 @@ import { durationDays } from "@features/subscription-grant/duration";
 import type { DurationChoice } from "@features/subscription-grant/duration";
 import { PlanDurationPicker } from "@features/subscription-grant/PlanDurationPicker";
 import { getErrorMessage } from "@shared/api/http";
+import { isUnlimitedExpiry } from "@shared/lib/duration";
 import { formatDate } from "@shared/lib/relative-time";
 import { toast } from "@shared/lib/toast";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -91,7 +92,11 @@ function ChangePlanBody({ plans, subscription, onChanged }: Omit<ChangePlanDialo
                 onPlanChange={setPlanId}
                 duration={duration}
                 onDurationChange={setDuration}
-                keepLabel={t("subscriptions.duration.keep", { date: formatDate(subscription.expire_at, i18n.language) })}
+                keepLabel={
+                  isUnlimitedExpiry(subscription.expire_at)
+                    ? t("subscriptions.duration.keepUnlimited")
+                    : t("subscriptions.duration.keep", { date: formatDate(subscription.expire_at, i18n.language) })
+                }
               />
               <p className="flex items-start gap-2 rounded-xl bg-warning/10 px-3 py-2.5 text-xs text-warning">
                 <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />

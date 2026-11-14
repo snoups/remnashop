@@ -30,6 +30,11 @@ class SetPlanDurationsUseCase(UseCase[SetPlanDurationsDto, PlanDto]):
                     "A trial plan has exactly one duration",
                     code=ErrorCode.PLAN_TRIAL_SINGLE_DURATION,
                 )
+            if current.is_trial and any(d.days == 0 for d in data.durations):
+                raise ValidationError(
+                    "A trial plan can't be unlimited",
+                    code=ErrorCode.PLAN_TRIAL_UNLIMITED_DURATION,
+                )
             if not current.is_trial and any(d.base_price == 0 for d in data.durations):
                 raise ValidationError(
                     "Only a trial plan can have a free duration",

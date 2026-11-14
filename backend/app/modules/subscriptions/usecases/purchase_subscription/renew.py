@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
 from typing import Callable, Optional
 
@@ -27,6 +27,7 @@ from app.modules.subscriptions.panel import (
     revert_panel_to_owner,
 )
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.subscriptions.unlimited import expiry_after, is_unlimited_expiry
 
 
 class RenewPurchase:
@@ -78,14 +79,28 @@ class RenewPurchase:
                     "Renewing a different plan is a CHANGE, not a RENEW",
                     code=ErrorCode.RENEW_PLAN_MISMATCH,
                 )
+            # nothing to add to: a paid order for it stays unfulfilled for an admin to settle
+            if target.is_unlimited:
+                raise ValidationError(
+                    "An unlimited subscription can't be renewed",
+                    code=ErrorCode.SUBSCRIPTION_UNLIMITED,
+                )
 
-        if data.idempotency_key is None:
+        if data.idempotency_key is None and data.duration_days == 0:
+            # the panel's extend takes days, not "unlimited"
+            updated = await self._remnawave_sdk.users.update_user(
+                UpdateUserRequestDto(
+                    id=target.remnawave_user_id, expire_at=expiry_after(datetime_now(), 0)
+                )
+            )
+            expire_at = updated.expire_at
+        elif data.idempotency_key is None:
             # No retry path re-runs a keyless grant, so the panel's atomic
             # relative extend is safe here.
-            panel_user = await self._remnawave_sdk.users.extend_user(
+            extended = await self._remnawave_sdk.users.extend_user(
                 target.remnawave_user_id, ExtendUserRequestDto(days=data.duration_days)
             )
-            expire_at = panel_user.expire_at
+            expire_at = extended.expire_at
         else:
             expire_at = await self._apply_pinned_renewal(
                 target, data.idempotency_key, data.claim_token, data.duration_days, keep_key
@@ -136,7 +151,11 @@ class RenewPurchase:
                 )
             paid = await self._paid_in_snapshot_currency(data, locked)
             subscription = await self._lifecycle_service.renew(
-                locked.id, expire_at, paid=paid, days=data.duration_days
+                locked.id,
+                expire_at,
+                paid=paid,
+                days=data.duration_days,
+                previous_expire_at=target.expire_at,
             )
             # only what reached the panel: the row must not claim a tag the panel lacks
             if tag_applied and subscription.tag != data.plan_snapshot.tag:
@@ -219,9 +238,15 @@ class RenewPurchase:
             pinned = await self._idempotency.find_pending_renew_expire_at(key)
         if pinned is None:
             panel_user = await self._remnawave_sdk.users.get_user_by_id(target.remnawave_user_id)
+            # made unlimited on the panel, its webhook not here yet
+            if is_unlimited_expiry(panel_user.expire_at):
+                raise ValidationError(
+                    "An unlimited subscription can't be renewed",
+                    code=ErrorCode.SUBSCRIPTION_UNLIMITED,
+                )
             base = max(panel_user.expire_at, datetime_now())
             # ms-truncated so the pinned value compares equal to the panel's
-            pinned = truncate_to_ms(base + timedelta(days=duration_days))
+            pinned = truncate_to_ms(expiry_after(base, duration_days))
             async with self._uow:
                 await self._idempotency.pin_renew_expire_at(key, pinned, token)
             keep_key()
