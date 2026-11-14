@@ -158,10 +158,12 @@ class SubscriptionState:
             raise ValidationError(
                 "Cannot shorten a deleted subscription", code=ErrorCode.SUBSCRIPTION_DELETED
             )
+        snap = self.plan_snapshot
+        if days == 0:
+            return self._undo_unlimited_renewal(now)
         expire_at = self.expire_at - timedelta(days=days)
         status = SubscriptionStatus.EXPIRED if expire_at <= now else self.status
         assert_transition(self.status, status)
-        snap = self.plan_snapshot
         return replace(
             self,
             status=status,
@@ -170,6 +172,27 @@ class SubscriptionState:
                 snap,
                 credit_paid=max(snap.effective_credit_paid - paid, ZERO_AMOUNT),
                 credit_days=max(snap.effective_credit_days - days, 0),
+            ),
+        )
+
+    def _undo_unlimited_renewal(self, now: datetime) -> SubscriptionState:
+        """Back to the term an unlimited renewal replaced; without a record of
+        it the refunded access ends now."""
+        snap = self.plan_snapshot
+        expire_at = refunded_unlimited_expiry(snap, now)
+        status = SubscriptionStatus.EXPIRED if expire_at <= now else self.status
+        assert_transition(self.status, status)
+        return replace(
+            self,
+            status=status,
+            expire_at=expire_at,
+            plan_snapshot=replace(
+                snap,
+                credit_paid=snap.unlimited_from_credit_paid,
+                credit_days=snap.unlimited_from_credit_days,
+                unlimited_from=None,
+                unlimited_from_credit_paid=None,
+                unlimited_from_credit_days=None,
             ),
         )
 
@@ -188,6 +211,10 @@ class SubscriptionState:
     def mark_deleted(self) -> SubscriptionState:
         assert_transition(self.status, SubscriptionStatus.DELETED)
         return replace(self, status=SubscriptionStatus.DELETED)
+
+
+def refunded_unlimited_expiry(snapshot: PlanSnapshot, now: datetime) -> datetime:
+    return snapshot.unlimited_from if snapshot.unlimited_from is not None else now
 
 
 def calculate_proration_credit(

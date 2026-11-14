@@ -14,6 +14,7 @@ from app.core.exceptions import ConflictError
 from app.core.ports import EventPublisher
 from app.core.utils.time import datetime_now
 from app.modules.pricing import PricingRepository
+from app.modules.subscriptions.domain import refunded_unlimited_expiry
 from app.modules.subscriptions.dto import (
     PurchaseRollbackDto,
     RollbackPreviewDto,
@@ -157,11 +158,14 @@ class PurchaseRollbackService:
         panel_user = await self._remnawave_sdk.users.get_user_by_id(target.remnawave_user_id)
         if panel_user.expire_at < pinned:
             return  # the extension never landed
+        # the row never took it, so its expiry is the one before the renewal
+        before = (
+            target.expire_at
+            if data.duration_days == 0
+            else pinned - timedelta(days=data.duration_days)
+        )
         await self._remnawave_sdk.users.update_user(
-            UpdateUserRequestDto(
-                id=target.remnawave_user_id,
-                expire_at=pinned - timedelta(days=data.duration_days),
-            )
+            UpdateUserRequestDto(id=target.remnawave_user_id, expire_at=before)
         )
         logger.info(
             f"Reverted the panel extension of subscription '{target.id}' "
@@ -172,11 +176,13 @@ class PurchaseRollbackService:
         self, actor: Actor, data: PurchaseRollbackDto, renewed: SubscriptionDto
     ) -> None:
         now = datetime_now()
+        before = (
+            refunded_unlimited_expiry(renewed.plan_snapshot, now)
+            if data.duration_days == 0
+            else renewed.expire_at - timedelta(days=data.duration_days)
+        )
         await self._remnawave_sdk.users.update_user(
-            UpdateUserRequestDto(
-                id=renewed.remnawave_user_id,
-                expire_at=renewed.expire_at - timedelta(days=data.duration_days),
-            )
+            UpdateUserRequestDto(id=renewed.remnawave_user_id, expire_at=before)
         )
         current = renewed
         try:
