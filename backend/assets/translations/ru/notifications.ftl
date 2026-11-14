@@ -103,8 +103,8 @@ ntf-customer-subscription-granted = { $has_plan_name ->
         [yes] Подписка «{ $plan_name }»
        *[other] Подписка
     } { $duration_days ->
-        [0] действует бессрочно.
-       *[other] действует { $duration_days ->
+        [0] навсегда.
+       *[other] на { $duration_days ->
             [one] { $duration_days } день
             [few] { $duration_days } дня
            *[other] { $duration_days } дней

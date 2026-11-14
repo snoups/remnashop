@@ -265,28 +265,28 @@ def test_template_text(
         (
             Locale.RU,
             {"duration_days": 0, "plan_name": "Про"},
-            "Подписка «Про» действует бессрочно. Подключите устройство, чтобы начать пользоваться.",
+            "Подписка «Про» навсегда. Подключите устройство, чтобы начать пользоваться.",
         ),
         (
             Locale.RU,
             {"duration_days": 30, "plan_name": "Про"},
-            "Подписка «Про» действует 30 дней. Подключите устройство, чтобы начать пользоваться.",
+            "Подписка «Про» на 30 дней. Подключите устройство, чтобы начать пользоваться.",
         ),
         # a feed row stored before the name was
         (
             Locale.RU,
             {"duration_days": 3},
-            "Подписка действует 3 дня. Подключите устройство, чтобы начать пользоваться.",
+            "Подписка на 3 дня. Подключите устройство, чтобы начать пользоваться.",
         ),
         (
             Locale.EN,
             {"duration_days": 0, "plan_name": "Pro"},
-            "Your “Pro” subscription has no end date. Connect a device to start using it.",
+            "“Pro” subscription forever. Connect a device to start using it.",
         ),
         (
             Locale.EN,
             {"duration_days": 1},
-            "Your subscription is valid for 1 day. Connect a device to start using it.",
+            "Subscription for 1 day. Connect a device to start using it.",
         ),
     ],
 )

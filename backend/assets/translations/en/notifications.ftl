@@ -97,12 +97,12 @@ ntf-customer-subscription-add-on-granted = { $addon_type ->
     }
     .title = Add-on activated
     .emoji = 🎁
-ntf-customer-subscription-granted = Your { $has_plan_name ->
+ntf-customer-subscription-granted = { $has_plan_name ->
         [yes] “{ $plan_name }” subscription
-       *[other] subscription
+       *[other] Subscription
     } { $duration_days ->
-        [0] has no end date.
-       *[other] is valid for { $duration_days ->
+        [0] forever.
+       *[other] for { $duration_days ->
             [one] { $duration_days } day
            *[other] { $duration_days } days
         }.
