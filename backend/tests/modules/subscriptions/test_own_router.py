@@ -83,6 +83,27 @@ async def test_lists_only_own_active_subscriptions(
     assert item["used_traffic"] is None
 
 
+async def test_own_subscription_says_it_is_unlimited(
+    client: httpx.AsyncClient,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    session_repository: SessionRepository,
+    config: AppConfig,
+) -> None:
+    forever = await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=77010,
+        remnawave_user_id=77010,
+        expire_at=datetime(2099, 5, 1, tzinfo=timezone.utc),
+    )
+    headers = await _bearer(forever.user_id, session_repository, config)
+
+    item = (await client.get(f"{API_V1}/subscriptions/me", headers=headers)).json()["items"][0]
+
+    assert item["is_unlimited"] is True
+
+
 async def test_the_connect_signature_vouches_for_its_own_link_only(
     client: httpx.AsyncClient,
     subscription_repository: SubscriptionRepository,

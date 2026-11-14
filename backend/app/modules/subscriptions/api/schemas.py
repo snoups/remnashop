@@ -43,6 +43,7 @@ class SubscriptionResponse(BaseModel):
     internal_squads: list[UUID]
     external_squad: Optional[UUID] = None
     expire_at: datetime
+    is_unlimited: bool
     created_at: Optional[datetime] = None
     first_connected_at: Optional[datetime] = None
     url: str
@@ -139,7 +140,8 @@ class PublicPlanPriceResponse(BaseModel):
 
 
 class PublicPlanDurationResponse(BaseModel):
-    days: int = Field(gt=0)
+    # 0 is unlimited
+    days: int = Field(ge=0)
     order_index: int = 0
     prices: list[PublicPlanPriceResponse]
 
@@ -171,6 +173,7 @@ class OwnSubscriptionResponse(BaseModel):
     status: SubscriptionStatus
     is_trial: bool
     expire_at: datetime
+    is_unlimited: bool
     url: str
     effective_traffic_limit: int
     effective_device_limit: int
@@ -195,6 +198,7 @@ class OwnSubscriptionResponse(BaseModel):
         return cls.model_validate(
             {
                 **subscription.model_dump(),
+                "is_unlimited": subscription.is_unlimited,
                 "plan_name": subscription.plan_snapshot.name,
                 "plan_id": subscription.plan_snapshot.plan_id,
                 "plan_traffic_limit": subscription.plan_snapshot.traffic_limit,

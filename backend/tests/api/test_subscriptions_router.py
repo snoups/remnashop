@@ -314,7 +314,16 @@ async def test_owner_can_set_subscription_expiry(
 
     assert response.status_code == 200
     assert response.json()["expire_at"].startswith("2031-06-01")
+    assert response.json()["is_unlimited"] is False
     assert remnawave_store[7101]["expireAt"].startswith("2031-06-01")
+
+    forever = await client.patch(
+        f"{API_V1}/subscriptions/{created.id}",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"expire_at": "2099-06-01T00:00:00Z"},
+    )
+
+    assert forever.json()["is_unlimited"] is True
 
 
 async def test_owner_can_disable_and_enable_subscription(
