@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import timedelta
 from types import SimpleNamespace
 from typing import Any, Awaitable, Callable, Optional, cast
 
@@ -24,10 +25,14 @@ from app.core.error_codes import ErrorCode
 from app.core.exceptions import ConflictError
 from app.core.outbox_event_publisher import OutboxEventPublisher
 from app.core.security import verify_password
+from app.core.utils.time import datetime_now
 from app.modules.auth.repository import SessionRepository
 from app.modules.auth.session_issuer import SessionIssuer
 from app.modules.auth.usecases import BootstrapOwnerUseCase
+from app.modules.plans.repository import PlanRepository
 from app.modules.settings.repository import SettingsRepository
+from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.transactions.stats_repository import TransactionStatsRepository
 from app.modules.users.dto import UserDto
 from app.modules.users.repository import UserRepository
 from tests.cli.legacy.conftest import NEW_HEAD
@@ -553,3 +558,90 @@ def test_stars_as_the_old_default_fall_back_to_a_sold_anchor_currency() -> None:
     assert migrate_module._anchor(Currency.XTR, sold, report) is Currency.RUB
     assert migrate_module._anchor(Currency.XTR, frozenset({Currency.XTR}), report) is Currency.USD
     assert any("can't be the anchor" in note for note in report.notes)
+
+
+async def test_unlimited_data_survives_migration(
+    legacy_engine: AsyncEngine, legacy_at: LegacyAt, config: AppConfig
+) -> None:
+    await _prepare(legacy_engine, legacy_at, _crypt_key(config))
+    forever = _SNAPSHOT | {"id": 2, "name": "Forever", "duration": 0}
+    async with legacy_engine.begin() as connection:
+        await _exec(
+            connection,
+            "INSERT INTO plans (id, order_index, is_active, type, availability, name, "
+            "traffic_limit, device_limit, internal_squads, is_trial, public_code) VALUES (2, 2, "
+            "true, 'BOTH', 'ALL', 'Forever', 100, 3, '{}', false, 'forever')",
+        )
+        await _exec(
+            connection,
+            "INSERT INTO plan_durations (id, days, plan_id, order_index) VALUES (2, 0, 2, 1)",
+        )
+        await _exec(
+            connection,
+            "INSERT INTO plan_prices (id, currency, price, plan_duration_id) "
+            "VALUES (3, 'RUB', 5000, 2)",
+        )
+        await _seed_user(connection, 4)
+        await _exec(
+            connection,
+            "INSERT INTO subscriptions (id, user_remna_id, status, is_trial, traffic_limit, "
+            "device_limit, internal_squads, expire_at, url, plan_snapshot, "
+            "traffic_limit_strategy, user_id) VALUES (5, gen_random_uuid(), 'ACTIVE', false, "
+            "100, 3, '{}', now() + interval '73 years', 'https://sub.example/s/short5', "
+            "CAST(:snapshot AS jsonb), 'NO_RESET', 4)",
+            snapshot=json.dumps(forever),
+        )
+        await _exec(connection, "UPDATE users SET current_subscription_id = 5 WHERE id = 4")
+        pricing = json.dumps(
+            {"original_amount": "5000", "final_amount": "5000", "discount_percent": 0}
+        )
+        await _exec(
+            connection,
+            "INSERT INTO transactions (id, payment_id, status, is_test, purchase_type, "
+            "gateway_type, pricing, currency, plan_snapshot, user_id) VALUES (4, "
+            "gen_random_uuid(), 'COMPLETED', false, 'NEW', 'YOOKASSA', CAST(:pricing AS jsonb), "
+            "'RUB', CAST(:snapshot AS jsonb), 4)",
+            pricing=pricing,
+            snapshot=json.dumps(forever),
+        )
+        await _exec(
+            connection,
+            "INSERT INTO promocodes (id, code, is_active, reward_type, reward, availability, "
+            "plan_snapshot) VALUES (5, 'FOREVER', true, 'SUBSCRIPTION', 0, 'ALL', "
+            "CAST(:snapshot AS jsonb))",
+            snapshot=json.dumps(forever),
+        )
+    index = PanelIndex(by_short_uuid={**_INDEX.by_short_uuid, "short5": 504})
+
+    await migrate(
+        legacy_engine,
+        panel_index=index,
+        crypt_key=_crypt_key(config),
+        bot_owner_id=None,
+        original_revision=LEGACY_HEAD,
+    )
+
+    async with legacy_engine.connect() as connection:
+        assert await connection.scalar(text("SELECT days FROM plan_durations WHERE id = 2")) == 0
+        assert (
+            await connection.scalar(text("SELECT change_credit FROM transactions WHERE id = 4"))
+            == 0
+        )
+        assert await connection.scalar(
+            text("SELECT unlimited_reward_days FROM referral_settings")
+        ) in (365, None)
+        assert (
+            await connection.scalar(
+                text("SELECT reward_duration_days FROM promocodes WHERE id = 5")
+            )
+            == 0
+        )
+        session = AsyncSession(bind=connection)
+        plan = await PlanRepository(session).get_by_id(2)
+        assert [d.days for d in plan.sellable_durations()] == [0]
+        assert (await SubscriptionRepository(session).get_by_id(5)).is_unlimited
+        now = datetime_now()
+        later = now + timedelta(days=400)
+        covered = await TransactionStatsRepository(session).users_covered_at([later], now)
+        assert 4 in covered[later]
+        await session.close()

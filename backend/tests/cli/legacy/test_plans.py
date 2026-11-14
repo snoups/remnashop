@@ -153,3 +153,19 @@ def test_leading_emoji_stripped_and_default_icon_set() -> None:
         ("5429613693287578957", "📦")
     }
     assert "plans: leading emoji removed from 4 plan names" in report.notes
+
+
+def test_trial_with_unlimited_duration_is_reported() -> None:
+    report = MigrationReport()
+    trial = PLAN | {"id": 4, "name": "Trial", "is_trial": True}
+    rows = transform_plans(
+        [PLAN, trial],
+        [*DURATIONS, {"id": 11, "plan_id": 4, "days": 0, "order_index": 1}],
+        [_price(1, "RUB", "0", duration=11)],
+        anchor_currency=Currency.RUB,
+        used_currencies=ALL,
+        report=report,
+    )
+
+    assert [row["days"] for row in rows.durations if row["plan_id"] == 4] == [0]
+    assert any("Trial" in note and "unlimited" in note for note in report.notes)
