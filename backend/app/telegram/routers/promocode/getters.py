@@ -16,7 +16,7 @@ from app.modules.promocodes import (
 from app.modules.subscriptions import ListOwnSubscriptionsUseCase
 from app.modules.users import UserDto
 from app.telegram.dialogs.rendering import label_with_icon, render_window_text
-from app.telegram.i18n import format_datetime, get_translator
+from app.telegram.i18n import format_expiry, get_translator
 
 
 @inject
@@ -48,7 +48,9 @@ async def promocode_target_getter(
     subscriptions = [
         {
             "id": sub.id,
-            "label": f"{sub.plan_snapshot.name} — {format_datetime(sub.expire_at)}",
+            "label": (
+                f"{sub.plan_snapshot.name} — {format_expiry(runner, sub.expire_at, with_time=True)}"
+            ),
         }
         for sub in targets
     ]

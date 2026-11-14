@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -206,6 +207,37 @@ def test_purchase_card_shows_payment_subscription_plan_and_user() -> None:
         "• <b>Тип</b>: Трафик + устройства\n• <b>Лимит трафика</b>: 100 ГБ\n"
         "• <b>Лимит устройств</b>: 3\n• <b>Длительность</b>: 30 дней</blockquote>"
     )
+
+
+def test_an_unlimited_purchase_card_says_no_end_date() -> None:
+    renderer = _renderer(Locale.RU)
+    data = _data()
+    assert data.subscription is not None
+    subscription = data.subscription.model_copy(
+        update={
+            "expire_at": datetime_now().replace(year=2099),
+            "plan_snapshot": replace(_plan(), duration_days=0),
+        }
+    )
+    args = notification_args(_PAYLOAD, "185.12.44.7")
+    title, body = renderer.render(Locale.RU, "SubscriptionPurchasedEvent", args)
+
+    card = build_telegram_card(
+        renderer,
+        Locale.RU,
+        event_type="SubscriptionPurchasedEvent",
+        payload=_PAYLOAD,
+        args=args,
+        data=replace(data, subscription=subscription),
+        build=_BUILD,
+        title=title,
+        body=body,
+        notes="",
+    )
+
+    assert "• <b>Осталось</b>: бессрочно" in card
+    assert "• <b>Длительность</b>: бессрочно" in card
+    assert not renderer.missing
 
 
 def test_a_plan_change_shows_old_and_new_plan_side_by_side() -> None:

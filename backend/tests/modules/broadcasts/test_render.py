@@ -15,7 +15,7 @@ from app.modules.broadcasts.dto import (
     BroadcastDto,
     RecipientContextDto,
 )
-from app.modules.broadcasts.render import BroadcastRenderer, outgoing_media
+from app.modules.broadcasts.render import BroadcastRenderer, outgoing_media, recipient_values
 
 NOW = datetime(2026, 10, 7, 12, tzinfo=timezone.utc)
 
@@ -150,3 +150,10 @@ def test_outgoing_media_path_includes_the_version() -> None:
     media = outgoing_media(Path("/media"), broadcast)
     assert media is not None
     assert media.path == Path("/media/broadcasts/7_3.jpg")
+
+
+def test_an_unlimited_subscription_has_no_expiry_variables() -> None:
+    values = recipient_values(_ctx(expire_at=NOW.replace(year=2099)), NOW, None)
+
+    assert values["expire_date"] == ""
+    assert values["days_left"] == ""

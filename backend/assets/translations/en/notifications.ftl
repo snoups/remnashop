@@ -27,7 +27,10 @@ ntf-subscription-purchased = { $user } bought a subscription ({ $purchase_type }
            *[other] Subscription purchased!
         }
     }
-ntf-subscription-renewed = { $user } renewed for { $duration_days } days
+ntf-subscription-renewed = { $duration_days ->
+        [0] { $user } renewed with no end date
+       *[other] { $user } renewed for { $duration_days } days
+    }
     .title = Subscription renewed!
 ntf-transaction-refunded = Order #{ $order_id }: { $amount } { $currency } refunded via { $gateway_type }
     .title = Payment refunded!
@@ -67,10 +70,13 @@ ntf-customer-subscription-purchased = To start using the service, connect a devi
         [yes] 🎁
        *[no] ✅
     }
-ntf-customer-subscription-renewed = Your subscription was extended by { $duration_days ->
-        [one] { $duration_days } day
-       *[other] { $duration_days } days
-    }.
+ntf-customer-subscription-renewed = { $duration_days ->
+        [0] Your subscription no longer expires.
+       *[other] Your subscription was extended by { $duration_days ->
+            [one] { $duration_days } day
+           *[other] { $duration_days } days
+        }.
+    }
     .title = { $paid ->
         [yes] Payment successful!
        *[no] Subscription renewed
@@ -91,10 +97,13 @@ ntf-customer-subscription-add-on-granted = { $addon_type ->
     }
     .title = Add-on activated
     .emoji = 🎁
-ntf-customer-subscription-granted = Your access is open for { $duration_days ->
-        [one] { $duration_days } day
-       *[other] { $duration_days } days
-    }. Connect a device to start using it.
+ntf-customer-subscription-granted = { $duration_days ->
+        [0] Your access is open with no end date.
+       *[other] Your access is open for { $duration_days ->
+            [one] { $duration_days } day
+           *[other] { $duration_days } days
+        }.
+    } Connect a device to start using it.
     .title = Subscription granted
     .emoji = 🎁
 ntf-customer-transaction-refunded = { $money } will go back the way you paid.
@@ -453,6 +462,7 @@ ntf-telegram-promocode-type = { $value ->
         [PURCHASE_DISCOUNT] Purchase discount
        *[other] { $value }
     }
+ntf-telegram-unlimited = no end date
 ntf-telegram-days = { $count ->
         [one] { $count } day
        *[other] { $count } days

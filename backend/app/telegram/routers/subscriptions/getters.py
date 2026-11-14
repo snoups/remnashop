@@ -30,7 +30,7 @@ from app.telegram.dialogs.rendering import (
     render_window_text,
     resolve_variable_kwargs,
 )
-from app.telegram.i18n import format_date, get_translator
+from app.telegram.i18n import format_date, format_expiry, get_translator
 from app.telegram.routers.subscriptions.handlers import SINGLE_RESET_KEY
 
 _KNOWN_PLATFORMS: Final[frozenset[str]] = frozenset({"ios", "android", "windows", "macos", "linux"})
@@ -79,9 +79,12 @@ async def subscriptions_list_getter(
             "id": s.id,
             "label": runner.get(
                 "btn-subscriptions.item",
-                status=s.status.value,
+                # an active unlimited one has no date to read "until"
+                status="UNLIMITED"
+                if s.status is SubscriptionStatus.ACTIVE and s.is_unlimited
+                else s.status.value,
                 plan_name=s.plan_snapshot.name,
-                expire_at=format_date(s.expire_at),
+                expire_at=format_expiry(runner, s.expire_at),
             ),
         }
         for s in subscriptions
@@ -129,7 +132,7 @@ async def subscription_card_getter(
             plan_name=subscription.plan_snapshot.name,
             status=subscription.status.value,
             is_trial=int(subscription.is_trial),
-            expire_at=format_date(subscription.expire_at),
+            expire_at=format_expiry(runner, subscription.expire_at),
             traffic_limit=subscription.effective_traffic_limit,
             device_limit=subscription.effective_device_limit,
             **resolve_variable_kwargs(data),

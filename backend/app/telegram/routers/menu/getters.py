@@ -32,7 +32,7 @@ from app.telegram.dialogs.rendering import (
     render_window_text,
     resolve_variable_kwargs,
 )
-from app.telegram.i18n import format_datetime, get_translator
+from app.telegram.i18n import format_expiry, get_translator
 
 
 def menu_subscription(
@@ -89,7 +89,7 @@ def subscription_menu_values(
                 else unlimited
             ),
             "subscription_device_limit": str(devices) if devices else unlimited,
-            "subscription_expire_at": format_datetime(subscription.expire_at),
+            "subscription_expire_at": format_expiry(runner, subscription.expire_at, with_time=True),
         }
     if subscription is None:
         block = render_window_text(

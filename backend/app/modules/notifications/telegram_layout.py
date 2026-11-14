@@ -65,6 +65,18 @@ class _Card:
             return ""
         return self.renderer.render_message(self.locale, "ntf-telegram-days", {"count": count})
 
+    def term(self, days: Optional[int]) -> str:
+        # a plan's or a reward's duration; 0 is unlimited
+        return self.unlimited() if days == 0 else self.days(days)
+
+    def left(self, subscription: SubscriptionDto) -> str:
+        if subscription.is_unlimited:
+            return self.unlimited()
+        return self.days(_days_left(subscription.expire_at))
+
+    def unlimited(self) -> str:
+        return self.renderer.render_message(self.locale, "ntf-telegram-unlimited", {})
+
     def traffic(self, size: int) -> str:
         # the smallest unit is a megabyte: "0 MB", never bytes
         for unit, scale in (("TB", GB_TO_BYTES * 1024), ("GB", GB_TO_BYTES)):
@@ -333,7 +345,7 @@ def _subscription(card: _Card) -> Optional[CardBlock]:
             False,
         ),
         (card.label("device-limit"), card.count_limit(subscription.effective_device_limit), False),
-        (card.label("left"), card.days(_days_left(subscription.expire_at)), False),
+        (card.label("left"), card.left(subscription), False),
     ]
     if subscription.is_trial:
         return "🎁", card.label("trial-subscription"), rows
@@ -356,7 +368,7 @@ def _plan_values(card: _Card, plan: dict[str, Any]) -> list[str]:
         card.value("plan-type", _plan_type(traffic, devices)),
         card.traffic_limit(traffic),
         card.count_limit(devices),
-        card.days(duration if isinstance(duration, int) else None),
+        card.term(duration if isinstance(duration, int) else None),
     ]
 
 
@@ -394,7 +406,7 @@ def _promocode_reward(card: _Card) -> str:
         case PromocodeRewardType.DEVICES:
             return "" if reward is None else str(reward)
         case PromocodeRewardType.SUBSCRIPTION:
-            return card.days(promocode.reward_duration_days)
+            return card.term(promocode.reward_duration_days)
         case _:
             return "" if reward is None else f"{reward}%"
 
@@ -503,7 +515,7 @@ def plan_summary_block(
             False,
         ),
         (card.label("device-limit"), card.count_limit(subscription.effective_device_limit), False),
-        (card.label("left"), card.days(_days_left(subscription.expire_at)), False),
+        (card.label("left"), card.left(subscription), False),
     ]
     return "📦", subscription.plan_snapshot.name, rows
 

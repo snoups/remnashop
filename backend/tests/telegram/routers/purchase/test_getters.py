@@ -1,15 +1,17 @@
 from dataclasses import replace
+from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any
+from typing import Any, Optional
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from remnapy.enums import TrafficLimitStrategy
 
 from app.core.constants import ICON_ID_KEY_SUFFIX, USER_KEY
 from app.core.enums import Currency, DiscountSource, Locale
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
-from app.modules.subscriptions import PlanCatalogDto
+from app.modules.subscriptions import PlanCatalogDto, SubscriptionDto
 from app.telegram.dialogs.context import SELECTED_SUBSCRIPTION_KEY
 from app.telegram.routers.purchase.getters import (
     _plan_title,
@@ -18,6 +20,7 @@ from app.telegram.routers.purchase.getters import (
     method_getter,
     plan_getter,
 )
+from tests.modules.subscriptions.factories import make_subscription_dto
 from tests.telegram.routers.purchase.test_handlers import _plan
 
 
@@ -201,11 +204,11 @@ async def test_method_labels_price_in_each_method_currency() -> None:
     assert data["back_text"].text.endswith(" btn-purchase.back-duration")
 
 
-async def _confirm(dialog_data: dict) -> dict:
+async def _confirm(dialog_data: dict, owned: Optional[list[SubscriptionDto]] = None) -> dict:
     return await confirm_getter.__dishka_orig_func__(
         _manager(dialog_data),
         list_active_plans=AsyncMock(return_value=_CATALOG),
-        list_own_subscriptions=AsyncMock(return_value=[]),
+        list_own_subscriptions=AsyncMock(return_value=owned or []),
         list_visible_legal_documents=MagicMock(execute=AsyncMock(return_value=[])),
         i18n=_i18n(),
     )
@@ -238,6 +241,32 @@ async def test_confirm_of_a_change_warns_about_the_replacement() -> None:
 
     assert "frg-purchase-type-notice{'purchase_type': 'CHANGE'}" in data["window_text"]
     assert data["back_text"].text.endswith(" btn-purchase.back-duration")
+
+
+@pytest.mark.parametrize(
+    ("target_year", "days", "kind"),
+    [(2099, 0, "credit"), (2027, 0, "no_carry"), (2099, 30, "no_carry")],
+)
+async def test_confirm_of_an_unlimited_change_says_what_carries_over(
+    target_year: int, days: int, kind: str
+) -> None:
+    target = make_subscription_dto(id=5, expire_at=datetime(target_year, 1, 1, tzinfo=timezone.utc))
+
+    data = await _confirm(
+        {
+            **_PRICED,
+            "purchase_type": "CHANGE",
+            "duration_days": days,
+            "plan_name": "Plan 10",
+            "currency": "RUB",
+            "gateway_type": "YOOKASSA",
+            SELECTED_SUBSCRIPTION_KEY: 5,
+        },
+        owned=[target],
+    )
+
+    assert f"frg-purchase-change-unlimited-notice{{'kind': '{kind}'}}" in data["window_text"]
+    assert "frg-purchase-type-notice" not in data["window_text"]
 
 
 async def test_plan_buttons_carry_the_custom_emoji_or_lead_with_the_glyph() -> None:

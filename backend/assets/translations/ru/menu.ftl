@@ -190,6 +190,7 @@ btn-subscriptions =
     .purchase-icon = 💸
     .item = { $status ->
         [ACTIVE] 🟢 { $plan_name } · до { $expire_at }
+        [UNLIMITED] 🟢 { $plan_name } · бессрочно
         [LIMITED] 🟡 { $plan_name } · трафик исчерпан
         [EXPIRED] 🔴 { $plan_name } · истекла { $expire_at }
         [DISABLED] ⚫ { $plan_name } · отключена
@@ -411,6 +412,10 @@ msg-purchase-confirm =
     { $plan_changed_notice }
 
     { $terms_notice }
+frg-purchase-change-unlimited-notice = { $kind ->
+        [credit] <i>⚠️ Текущая подписка будет <u>заменена</u> выбранным тарифом. Оплаченное за текущую бессрочную подписку уже вычтено из цены.</i>
+       *[other] <i>⚠️ Текущая подписка будет <u>заменена</u> выбранным тарифом. Неиспользованная часть оплаты <u>не переносится</u>.</i>
+    }
 frg-purchase-terms-notice = <i>Оплачивая, вы принимаете условия — /terms</i>
 msg-purchase-pay = Заказ создан. Нажмите кнопку ниже, чтобы оплатить.
 msg-purchase-link-choice = У вас уже есть подписка { $plan_name }. Продлить её или купить ещё одну?
@@ -614,6 +619,8 @@ time-unit =
     }
     .hour = { $value } ч
     .minute = { $value } мин
+    .unlimited = Навсегда
+    .no-expiry = бессрочно
 
 inline-invite =
     .title = Пригласить друга

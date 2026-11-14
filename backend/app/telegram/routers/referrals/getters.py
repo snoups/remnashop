@@ -34,7 +34,7 @@ from app.telegram.dialogs.rendering import (
     render_window_text,
     resolve_variable_kwargs,
 )
-from app.telegram.i18n import format_date, get_translator
+from app.telegram.i18n import format_expiry, get_translator
 from app.telegram.middlewares._codes import REFERRAL_PREFIX
 
 
@@ -136,7 +136,7 @@ async def redeem_target_getter(
     runner = get_translator(i18n, user)
     return {
         "subscriptions": [
-            {"id": s.id, "label": f"{s.plan_snapshot.name} — {format_date(s.expire_at)}"}
+            {"id": s.id, "label": f"{s.plan_snapshot.name} — {format_expiry(runner, s.expire_at)}"}
             for s in await list_bonus_days_targets(user)
         ],
         "window_text": render_window_text(

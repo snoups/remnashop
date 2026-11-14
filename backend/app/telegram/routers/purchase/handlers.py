@@ -112,6 +112,9 @@ def checkout_quoter(
                 currency=currency,
                 plan_code=query.plan_code,
                 renew_subscription_id=query.renew_subscription_id,
+                change_subscription_id=selected_subscription_id(manager)
+                if manager.dialog_data.get("purchase_type") == PurchaseType.CHANGE.value
+                else None,
             ),
         )
 

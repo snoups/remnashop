@@ -16,6 +16,13 @@ def register_subscriptions_metadata() -> None:
         "paid_subscription",
         lambda data: data.get("subscription") is not None and not data["subscription"].is_trial,
     )
+    # an unlimited one has nothing to renew; changing its plan stays open
+    catalog.register_condition(
+        "renewable_subscription",
+        lambda data: data.get("subscription") is not None
+        and not data["subscription"].is_trial
+        and not data["subscription"].is_unlimited,
+    )
     catalog.register_condition(
         "trial_subscription",
         lambda data: data.get("subscription") is not None and data["subscription"].is_trial,
@@ -89,7 +96,7 @@ def register_subscriptions_metadata() -> None:
                     column=0,
                     link_type=ButtonLinkType.ACTION,
                     action_key="purchase_renew",
-                    visibility_condition="paid_subscription",
+                    visibility_condition="renewable_subscription",
                 ),
                 catalog.CatalogButton(
                     key="change",
