@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 from uuid import uuid4
 
 import pytest
@@ -657,3 +657,52 @@ async def test_a_change_never_makes_a_trial_unlimited(
 
     assert error.value.code is ErrorCode.PLAN_TRIAL_UNLIMITED_DURATION
     assert not (await subscription_repository.get_by_id(forever.id)).is_trial
+
+
+async def test_a_webhook_landing_first_does_not_lose_the_term_an_unlimited_renewal_replaced(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # the panel's webhook syncs the new expiry into the row before the renewal locks it
+    buyer = await user_repository.create(CreateUserDto(name="race", telegram_id=91018))
+    plan = await _plan(plan_repository, "webhook-first")
+    use_case = _use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    month = await _buy(use_case, buyer, plan, days=30, paid="500")
+    update_user = remnawave_sdk.users.update_user
+
+    async def webhook_first(body: Any) -> Any:
+        panel_user = await update_user(body)
+        await subscription_repository.update(
+            UpdateSubscriptionDto(subscription_id=month.id, expire_at=panel_user.expire_at)
+        )
+        return panel_user
+
+    monkeypatch.setattr(remnawave_sdk.users, "update_user", webhook_first)
+
+    renewed = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                plan, price_paid=Decimal("5000"), currency=Currency.RUB, duration_days=0
+            ),
+            duration_days=0,
+            price_paid=Decimal("5000"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.RENEW,
+            target_subscription_id=month.id,
+            idempotency_key="webhook-first-renew",
+        ),
+    )
+
+    assert renewed.is_unlimited
+    assert renewed.plan_snapshot.unlimited_from == month.expire_at
+    assert renewed.plan_snapshot.unlimited_from_credit_paid == Decimal("500")

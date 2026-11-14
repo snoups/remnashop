@@ -48,13 +48,21 @@ class SubscriptionLifecycleService:
         return await self._subscription_repository.apply_state(new_state)
 
     async def renew(
-        self, subscription_id: int, new_expire_at: datetime, *, paid: Decimal, days: int
+        self,
+        subscription_id: int,
+        new_expire_at: datetime,
+        *,
+        paid: Decimal,
+        days: int,
+        previous_expire_at: datetime,
     ) -> SubscriptionDto:
+        # previous_expire_at is read before the panel call: the panel's webhook may
+        # have synced the new expiry into the row by now
         dto = await self._subscription_repository.get_by_id_for_update(subscription_id)
         state = _dto_to_state(dto)
-        lapsed = state.expire_at <= datetime_now()
+        lapsed = previous_expire_at <= datetime_now()
         new_state = state.reactivate_on_renew(new_expire_at).add_renewal_credit(
-            paid, days, restart=lapsed, previous_expire_at=state.expire_at
+            paid, days, restart=lapsed, previous_expire_at=previous_expire_at
         )
         return await self._subscription_repository.apply_state(new_state)
 

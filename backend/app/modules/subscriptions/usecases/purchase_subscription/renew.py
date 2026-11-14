@@ -151,7 +151,11 @@ class RenewPurchase:
                 )
             paid = await self._paid_in_snapshot_currency(data, locked)
             subscription = await self._lifecycle_service.renew(
-                locked.id, expire_at, paid=paid, days=data.duration_days
+                locked.id,
+                expire_at,
+                paid=paid,
+                days=data.duration_days,
+                previous_expire_at=target.expire_at,
             )
             # only what reached the panel: the row must not claim a tag the panel lacks
             if tag_applied and subscription.tag != data.plan_snapshot.tag:
