@@ -34,6 +34,11 @@ class BonusDaysTargets:
             raise ValidationError(
                 "Cannot renew a deleted subscription", code=ErrorCode.SUBSCRIPTION_DELETED
             )
+        if target.is_unlimited:
+            raise ValidationError(
+                "Bonus days can't extend an unlimited subscription",
+                code=ErrorCode.SUBSCRIPTION_UNLIMITED,
+            )
         # disabled on purpose; a free extension mustn't undo that (the renewal
         # re-checks it right before touching the panel)
         if target.status is SubscriptionStatus.DISABLED:
