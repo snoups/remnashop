@@ -99,15 +99,18 @@ ntf-customer-subscription-add-on-granted = { $addon_type ->
     }
     .title = Дополнение активировано
     .emoji = 🎁
-ntf-customer-subscription-granted = { $duration_days ->
-        [0] Доступ открыт бессрочно.
-       *[other] Доступ открыт на { $duration_days ->
+ntf-customer-subscription-granted = { $has_plan_name ->
+        [yes] Подписка «{ $plan_name }»
+       *[other] Подписка
+    } { $duration_days ->
+        [0] действует бессрочно.
+       *[other] действует { $duration_days ->
             [one] { $duration_days } день
             [few] { $duration_days } дня
            *[other] { $duration_days } дней
         }.
     } Подключите устройство, чтобы начать пользоваться.
-    .title = Подписка выдана
+    .title = Вам выдана подписка
     .emoji = 🎁
 ntf-customer-transaction-refunded = { $money } вернутся тем же способом, которым вы платили.
     .title = Платёж возвращён

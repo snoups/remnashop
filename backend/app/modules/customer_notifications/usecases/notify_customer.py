@@ -48,6 +48,7 @@ from app.modules.subscriptions import (
     SubscriptionExpiredAgoEvent,
     SubscriptionExpiredEvent,
     SubscriptionExpiringEvent,
+    SubscriptionGrantedEvent,
     SubscriptionNotConnectedEvent,
     SubscriptionPurchasedEvent,
     SubscriptionRenewedEvent,
@@ -166,11 +167,13 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
             if data.event_type == SubscriptionTrafficLimitedEvent.__name__ and subscription:
                 args["traffic_strategy"] = subscription.traffic_limit_strategy.value
             data = replace(data, args=args)
+        if data.event_type == SubscriptionGrantedEvent.__name__:
+            data = await self._with_plan_name(data)
         renderer = await self._renderer_factory.build()
         title, body = renderer.render(
             user.language,
             f"Customer{data.event_type}",
-            customer_render_args(data.args, user.language),
+            customer_render_args(data.args, user.language, data.event_type),
         )
         if not body:
             logger.error(f"No customer notification text for {data.event_type}")
@@ -267,6 +270,15 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
         # no bot process listening: the text is the fallback
         return await self._bot_signals.payment_outcome(user.telegram_id, order.id, outcome) > 0
 
+    async def _with_plan_name(self, data: NotifyCustomerDto) -> NotifyCustomerDto:
+        # the event carries the plan id only; stored with the feed row for the bell
+        if data.subscription_id is None:
+            return data
+        subscription = await self._find_subscription(data.subscription_id)
+        if subscription is None:
+            return data
+        return replace(data, args={**data.args, "plan_name": subscription.plan_snapshot.name})
+
     async def _queue(
         self,
         data: NotifyCustomerDto,
@@ -277,7 +289,7 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
         body: str,
     ) -> None:
         if channel is CustomerChannel.TELEGRAM:
-            args = customer_render_args(data.args, user.language)
+            args = customer_render_args(data.args, user.language, data.event_type)
             emoji = renderer.emoji(user.language, f"Customer{data.event_type}", args) or "🔔"
             subscription = (
                 await self._find_subscription(data.subscription_id)
