@@ -176,14 +176,17 @@ class PurchaseRollbackService:
         self, actor: Actor, data: PurchaseRollbackDto, renewed: SubscriptionDto
     ) -> None:
         now = datetime_now()
-        before = (
-            refunded_unlimited_expiry(renewed.plan_snapshot, now)
-            if data.duration_days == 0
-            else renewed.expire_at - timedelta(days=data.duration_days)
-        )
-        await self._remnawave_sdk.users.update_user(
-            UpdateUserRequestDto(id=renewed.remnawave_user_id, expire_at=before)
-        )
+        if data.duration_days == 0:
+            before = refunded_unlimited_expiry(renewed.plan_snapshot, now)
+        elif renewed.is_unlimited:
+            # a later unlimited renewal replaced the refunded term: 2099 stays
+            before = renewed.expire_at
+        else:
+            before = renewed.expire_at - timedelta(days=data.duration_days)
+        if before != renewed.expire_at:
+            await self._remnawave_sdk.users.update_user(
+                UpdateUserRequestDto(id=renewed.remnawave_user_id, expire_at=before)
+            )
         current = renewed
         try:
             async with self._uow:

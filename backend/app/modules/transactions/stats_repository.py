@@ -13,13 +13,16 @@ from sqlalchemy import (
     Subquery,
     case,
     cast,
+    exists,
     func,
     literal,
     or_,
     select,
+    tuple_,
 )
 from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.core.constants import TIME_1D, UNLIMITED_COVERAGE_DAYS
 from app.core.db.filters import in_ids
@@ -175,6 +178,19 @@ class TransactionStatsRepository:
         conditions: list[ColumnElement[bool]] = [*_PAID, Transaction.updated_at < before]
         if user_ids is not None:
             conditions.append(in_ids(Transaction.user_id, user_ids))
+        # an unlimited order covers for good: the ones after it add nothing, and
+        # stacked they'd run past the timestamp range
+        earlier = aliased(Transaction)
+        conditions.append(
+            ~exists().where(
+                earlier.user_id == Transaction.user_id,
+                earlier.status == TransactionStatus.PAID,
+                earlier.is_test.is_(False),
+                earlier.duration_days == 0,
+                tuple_(earlier.updated_at, earlier.duration_days, earlier.id)
+                < tuple_(Transaction.updated_at, Transaction.duration_days, Transaction.id),
+            )
+        )
         # an unlimited order has 0 days and covers for good
         covered_days = case(
             (Transaction.duration_days == 0, UNLIMITED_COVERAGE_DAYS),

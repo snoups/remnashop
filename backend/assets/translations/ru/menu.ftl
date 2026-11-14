@@ -528,11 +528,14 @@ msg-promocode-confirm =
             [few] устройства
            *[other] устройств
         }</b> к лимиту устройств.
-        [SUBSCRIPTION] подписку <b>{ $promo_plan_name }</b> на <b>{ $promo_reward } { $promo_reward ->
-            [one] день
-            [few] дня
-           *[other] дней
-        }</b>.
+        [SUBSCRIPTION] подписку <b>{ $promo_plan_name }</b> { $promo_reward ->
+            [0] <b>навсегда</b>
+           *[other] на <b>{ $promo_reward } { $promo_reward ->
+                [one] день
+                [few] дня
+               *[other] дней
+            }</b>
+        }.
         [PERSONAL_DISCOUNT] постоянную <b>скидку { $promo_reward }%</b> на все покупки.
         [PURCHASE_DISCOUNT] <b>скидку { $promo_reward }%</b> на следующую покупку.
        *[other] награду на ваш аккаунт.

@@ -43,12 +43,11 @@ def _catalog(*ids: int) -> PlanCatalogDto:
     return PlanCatalogDto(plans=[_plan(id=i) for i in ids], anchor_currency=Currency.RUB)
 
 
-def _subscription(id: int, plan_id: int) -> Any:
+def _subscription(id: int, plan_id: int, *, unlimited: bool = False) -> Any:
     snapshot = MagicMock(plan_id=plan_id)
     snapshot.name = f"Plan {plan_id}"
-    return MagicMock(
-        id=id, plan_snapshot=snapshot, expire_at=datetime(2026, 11, 1, tzinfo=timezone.utc)
-    )
+    expire_at = datetime(2099 if unlimited else 2026, 11, 1, tzinfo=timezone.utc)
+    return MagicMock(id=id, plan_snapshot=snapshot, expire_at=expire_at, is_unlimited=unlimited)
 
 
 async def test_plan_link_starts_the_purchase_with_its_code() -> None:
@@ -80,6 +79,18 @@ async def test_link_with_a_subscription_on_the_plan_offers_renew_or_new() -> Non
 
     assert manager.dialog_data[LINK_CHOICE_KEY] is True
     manager.switch_to.assert_awaited_once_with(Purchase.LINK_CHOICE)
+
+
+async def test_link_with_only_an_unlimited_subscription_on_the_plan_opens_the_durations() -> None:
+    # nothing to renew on it
+    manager = _manager(start_data=_LINK_START)
+
+    await start_purchase_steps(
+        manager, _catalog(10), [_subscription(3, plan_id=10, unlimited=True)]
+    )
+
+    assert LINK_CHOICE_KEY not in manager.dialog_data
+    manager.switch_to.assert_awaited_once_with(Purchase.DURATION)
 
 
 async def test_link_to_an_unavailable_plan_answers_and_opens_the_menu() -> None:
@@ -198,3 +209,21 @@ async def test_link_choice_lists_only_subscriptions_on_that_plan() -> None:
     assert data["subscriptions"][0]["label"].text == "btn-purchase.link-renew-icon " + _get(
         "btn-purchase.link-renew", subscription="Plan 10 — 01.11.2026"
     )
+
+
+async def test_link_choice_leaves_out_an_unlimited_subscription() -> None:
+    manager = _getter_manager({"plan_id": 10, PLAN_CODE_KEY: "x"})
+
+    data = await link_choice_getter.__dishka_orig_func__(
+        manager,
+        list_active_plans=AsyncMock(return_value=_catalog(10)),
+        list_own_subscriptions=AsyncMock(
+            return_value=[
+                _subscription(3, plan_id=10),
+                _subscription(4, plan_id=10, unlimited=True),
+            ]
+        ),
+        i18n=_getter_i18n(),
+    )
+
+    assert [item["id"] for item in data["subscriptions"]] == [3]

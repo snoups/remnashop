@@ -14,6 +14,9 @@ def paid_coverage(payments: list[tuple[datetime, int]]) -> list[tuple[datetime, 
             segments[-1] = (start, max(end, paid_at) + timedelta(days=days))
         else:
             segments.append((paid_at, paid_at + timedelta(days=days)))
+        if not paid_days:
+            # covered for good: later payments add nothing, and stacked they'd overflow
+            break
     return segments
 
 

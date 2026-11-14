@@ -35,3 +35,12 @@ def test_an_unlimited_payment_covers_far_ahead() -> None:
     segments = paid_coverage([(t0, 0)])
 
     assert is_covered(segments, t0 + timedelta(days=4000))
+
+
+def test_unlimited_payments_stop_stacking_after_the_first() -> None:
+    # free switches between unlimited plans are paid orders too
+    t0 = datetime_now()
+
+    segments = paid_coverage([(t0 + timedelta(minutes=n), 0) for n in range(100)])
+
+    assert segments == [(t0, t0 + timedelta(days=36500))]

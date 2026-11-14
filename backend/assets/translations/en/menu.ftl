@@ -522,10 +522,13 @@ msg-promocode-confirm =
             [one] device
            *[other] devices
         }</b> on your device limit.
-        [SUBSCRIPTION] the <b>{ $promo_plan_name }</b> subscription for <b>{ $promo_reward } { $promo_reward ->
-            [one] day
-           *[other] days
-        }</b>.
+        [SUBSCRIPTION] the <b>{ $promo_plan_name }</b> subscription { $promo_reward ->
+            [0] <b>forever</b>
+           *[other] for <b>{ $promo_reward } { $promo_reward ->
+                [one] day
+               *[other] days
+            }</b>
+        }.
         [PERSONAL_DISCOUNT] a permanent <b>{ $promo_reward }% discount</b> on every purchase.
         [PURCHASE_DISCOUNT] a <b>{ $promo_reward }% discount</b> on your next purchase.
        *[other] a reward on your account.

@@ -396,7 +396,7 @@ async def link_choice_getter(
     owned = [
         s
         for s in await list_own_subscriptions(user)
-        if plan is not None and s.plan_snapshot.plan_id == plan.id
+        if plan is not None and s.plan_snapshot.plan_id == plan.id and not s.is_unlimited
     ]
     return {
         "window_text": render_window_text(

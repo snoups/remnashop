@@ -507,3 +507,35 @@ async def test_refund_pending_unlimited_renewal_restores_row_expiry(
 
     panel_expire = _panel_expire(remnawave_store, bought.remnawave_user_id)
     assert abs(panel_expire - bought.expire_at) < timedelta(seconds=1)
+
+
+async def test_refund_of_a_finite_renewal_under_a_later_unlimited_one_keeps_it_unlimited(
+    purchase: PurchaseSubscriptionUseCase,
+    service: PurchaseRollbackService,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_store: FakeUserStore,
+) -> None:
+    # the refunded days come off the term the unlimited renewal replaced, not off 2099
+    buyer = await _buyer(user_repository, 9132)
+    plan = await _plan(plan_repository, "rb_finite_under_forever")
+    bought = await _buy(purchase, buyer, plan, PurchaseType.NEW)
+    month = await _buy(purchase, buyer, plan, PurchaseType.RENEW, target=bought.id)
+    forever = await _renew_unlimited(purchase, buyer, plan, bought.id)
+
+    await service.rollback(OWNER, _data(PurchaseType.RENEW, month.id, target=month.id))
+
+    after = await subscription_repository.get_by_id(bought.id)
+    assert after.expire_at == forever.expire_at
+    assert _panel_expire(remnawave_store, bought.remnawave_user_id).year == 2099
+    assert after.plan_snapshot.credit_paid == Decimal("5000")
+    assert after.plan_snapshot.unlimited_from == bought.expire_at
+    assert after.plan_snapshot.unlimited_from_credit_paid == Decimal("300")
+    assert after.plan_snapshot.unlimited_from_credit_days == 30
+
+    await service.rollback(OWNER, _unlimited_data(forever.id, forever.id))
+
+    restored = await subscription_repository.get_by_id(bought.id)
+    assert restored.expire_at == bought.expire_at
+    assert restored.plan_snapshot.effective_credit_paid == Decimal("300")

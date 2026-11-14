@@ -269,3 +269,29 @@ async def test_a_test_payment_with_zero_days_is_no_coverage(
     covered = await TransactionStatsRepository(session).users_covered_at([later], now)
 
     assert user.id not in covered[later]
+
+
+async def test_coverage_of_many_unlimited_orders_stays_in_range(
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    plan_id: int,
+) -> None:
+    # each free switch between unlimited plans is a paid order: they must not stack
+    user = await user_repository.create(CreateUserDto(name="switcher", telegram_id=863_001))
+    start = datetime_now() - timedelta(days=10)
+    for n in range(80):
+        async with uow:
+            order = await transaction_repository.create(_order(user.id, plan_id, f"switch-{n}"))
+        await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
+        await session.execute(
+            update(Transaction)
+            .where(Transaction.id == order.id)
+            .values(updated_at=start + timedelta(minutes=n), duration_days=0)
+        )
+    now = datetime_now()
+
+    covered = await TransactionStatsRepository(session).users_covered_at([now], now)
+
+    assert user.id in covered[now]

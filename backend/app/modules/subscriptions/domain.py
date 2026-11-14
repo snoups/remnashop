@@ -164,6 +164,8 @@ class SubscriptionState:
         snap = self.plan_snapshot
         if days == 0:
             return self._undo_unlimited_renewal(now)
+        if is_unlimited_expiry(self.expire_at):
+            return self._shorten_under_unlimited(days, paid)
         expire_at = self.expire_at - timedelta(days=days)
         status = SubscriptionStatus.EXPIRED if expire_at <= now else self.status
         assert_transition(self.status, status)
@@ -175,6 +177,24 @@ class SubscriptionState:
                 snap,
                 credit_paid=max(snap.effective_credit_paid - paid, ZERO_AMOUNT),
                 credit_days=max(snap.effective_credit_days - days, 0),
+            ),
+        )
+
+    def _shorten_under_unlimited(self, days: int, paid: Decimal) -> SubscriptionState:
+        """A later unlimited renewal replaced the refunded term: it stays unlimited,
+        and the term it would give back on its own refund loses the refunded days."""
+        snap = self.plan_snapshot
+        if snap.unlimited_from is None:
+            return self
+        return replace(
+            self,
+            plan_snapshot=replace(
+                snap,
+                unlimited_from=snap.unlimited_from - timedelta(days=days),
+                unlimited_from_credit_paid=max(
+                    (snap.unlimited_from_credit_paid or ZERO_AMOUNT) - paid, ZERO_AMOUNT
+                ),
+                unlimited_from_credit_days=max((snap.unlimited_from_credit_days or 0) - days, 0),
             ),
         )
 

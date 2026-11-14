@@ -183,7 +183,8 @@ async def _start_by_link(
     plan = catalog.plans[0]
     manager.dialog_data[PLAN_CODE_KEY] = code
     manager.dialog_data["plan_id"] = plan.id
-    if any(s.plan_snapshot.plan_id == plan.id for s in subscriptions):
+    # an unlimited one has nothing to renew
+    if any(s.plan_snapshot.plan_id == plan.id and not s.is_unlimited for s in subscriptions):
         manager.dialog_data[LINK_CHOICE_KEY] = True
         await manager.switch_to(Purchase.LINK_CHOICE)
     else:
