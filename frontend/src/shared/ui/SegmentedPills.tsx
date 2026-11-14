@@ -56,7 +56,7 @@ export function SegmentedPills<T extends string | number>({
           )}
           <span
             className={`relative z-10 text-sm font-medium ${
-              panel ? "flex h-9 items-center px-4" : `block px-3.5 ${compact ? "py-[3px] leading-5" : "py-1"}`
+              panel ? "flex h-9 items-center justify-center px-4" : `block px-3.5 ${compact ? "py-[3px] leading-5" : "py-1"}`
             } ${value === option.value ? "text-primary" : "text-foreground"}`}
           >
             {option.label}

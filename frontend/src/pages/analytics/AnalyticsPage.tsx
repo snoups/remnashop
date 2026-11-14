@@ -68,9 +68,9 @@ export function AnalyticsPage() {
         <div className="min-w-0">
           <TabBar items={items} />
         </div>
-        <div className="ml-auto max-w-full shrink-0">
+        <div className="w-full shrink-0 md:ml-auto md:w-auto">
           {activeTab?.periodIndependent ? (
-            <span className="glass-panel flex h-12 items-center rounded-full px-4 text-sm font-medium text-muted-foreground">
+            <span className="glass-panel flex h-12 items-center justify-center rounded-full px-4 text-sm font-medium text-muted-foreground">
               {t("analytics.periodIndependent")}
             </span>
           ) : (

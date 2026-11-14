@@ -95,7 +95,7 @@ export function PeriodPicker({ period, onChange: setPeriod }: { period: Analytic
 
   return (
     <div ref={wrapperRef}>
-      <SegmentedPills panel value={value} onChange={handleChange} options={options} />
+      <SegmentedPills panel stretch value={value} onChange={handleChange} options={options} />
       <PortalPopover
         open={isOpen}
         triggerRef={wrapperRef}
