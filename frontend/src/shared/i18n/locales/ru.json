@@ -3144,6 +3144,8 @@
       "bannerReplace": "Заменить",
       "variableSearch": "Поиск по переменным",
       "variableEmpty": "Ничего не найдено",
+      "emojiSearch": "Поиск эмодзи (на английском)",
+      "emojiEmpty": "Ничего не найдено",
       "emojiClear": "Убрать эмодзи",
       "emojiGroup": {
         "smileys": "Смайлики",

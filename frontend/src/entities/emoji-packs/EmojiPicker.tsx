@@ -1,10 +1,11 @@
 import type { ParseKeys } from "i18next";
-import { Plus, Smile, X } from "lucide-react";
+import { Plus, Search, Smile, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { listEmojiPacks } from "@entities/emoji-packs/api";
+import { listEmojiPacks, type EmojiPackItem } from "@entities/emoji-packs/api";
+import { LUCIDE_PACK_ICONS } from "@entities/emoji-packs/lucide-pack";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { scrollToEmojiPacks } from "@shared/lib/emoji-packs-anchor";
 import { useClickOutside } from "@shared/lib/use-click-outside";
@@ -31,6 +32,16 @@ interface EmojiPickerProps {
 }
 
 const POPOVER_MAX_HEIGHT = 360;
+const CELL_CLASS =
+  "flex h-7 w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-[17px] transition-colors hover:bg-white/[0.07]";
+
+// a pack item has no name of its own: it is found by its fallback emoji's Unicode name
+const stripVariation = (glyph: string) => glyph.replace(/\uFE0F/g, "");
+const STANDARD_NAMES: ReadonlyMap<string, string> = new Map(
+  STANDARD_EMOJI.flatMap((group) => group.items.map((emoji) => [stripVariation(emoji.g), emoji.n])),
+);
+const packItemName = (item: EmojiPackItem) =>
+  `${STANDARD_NAMES.get(stripVariation(item.fallback_emoji)) ?? ""} ${LUCIDE_PACK_ICONS[item.custom_emoji_id]?.name ?? ""}`;
 const POPOVER_MOTION = {
   initial: { opacity: 0, scale: 0.96, y: -4 },
   animate: { opacity: 1, scale: 1, y: 0 },
@@ -78,6 +89,7 @@ export function EmojiPicker({
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("standard");
+  const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -97,6 +109,7 @@ export function EmojiPicker({
 
   const open = () => {
     selectTab("standard");
+    setQuery("");
     setIsOpen(true);
   };
 
@@ -108,6 +121,36 @@ export function EmojiPicker({
   const cancelClose = () => {
     if (closeTimer.current !== undefined) window.clearTimeout(closeTimer.current);
   };
+
+  const needle = query.trim().toLowerCase();
+  const matches = (name: string) => name.toLowerCase().includes(needle);
+  const foundStandard = needle
+    ? STANDARD_EMOJI.flatMap((group) => group.items.filter((emoji) => matches(emoji.n)))
+    : [];
+  const foundPremium = needle
+    ? packs.flatMap((pack) => pack.items.filter((item) => matches(packItemName(item))))
+    : [];
+
+  const premiumCell = (item: EmojiPackItem) => (
+    <Pressable
+      key={item.custom_emoji_id}
+      type="button"
+      onClick={() =>
+        pick({
+          customEmojiId: item.custom_emoji_id,
+          fallback: item.fallback_emoji,
+        })
+      }
+      className={CELL_CLASS}
+    >
+      <PremiumEmoji item={item} size={22} />
+    </Pressable>
+  );
+  const standardCell = (glyph: string) => (
+    <Pressable key={glyph} type="button" onClick={() => pick({ glyph })} className={CELL_CLASS}>
+      {glyph}
+    </Pressable>
+  );
 
   const pick = (picked: PickedEmoji) => {
     onPick(picked);
@@ -187,43 +230,50 @@ export function EmojiPicker({
             as wide as the popover. */}
         {/* py matches the fade: at either end of the scroll the gradient
             sits over padding, never over a row of emoji. */}
+        {/* no autoFocus: the picker opens on hover and would pull the caret out of the text being edited */}
+        {/* the tab bar's capsule: 26px slots in p-1, so the icons line up with the tabs and the + above */}
+        <label className="glass-well mb-2 flex items-center rounded-full p-1">
+          <span className="flex size-[26px] shrink-0 items-center justify-center text-muted-foreground">
+            <Search className="size-[18px]" />
+          </span>
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t("dialogs.inspector.emojiSearch")}
+            className="w-full min-w-0 bg-transparent px-1.5 text-xs text-foreground outline-none placeholder:text-muted-foreground"
+          />
+          {query && (
+            <IconButton size="26px" onClick={() => setQuery("")}>
+              <X className="size-[18px]" />
+            </IconButton>
+          )}
+        </label>
+
+        {/* x-hidden, not x-auto: a glyph the font renders wider than its
+            cell would otherwise add a scrollbar to a grid that is already
+            as wide as the popover. */}
+        {/* py matches the fade: at either end of the scroll the gradient
+            sits over padding, never over a row of emoji. */}
         <div className={`max-h-56 ${POPOVER_SCROLL_CLASS}`}>
-          {activePack ? (
-            <div className="grid grid-cols-8 gap-1">
-              {activePack.items.map((item) => (
-                <Pressable
-                  key={item.custom_emoji_id}
-                  type="button"
-                  onClick={() =>
-                    pick({
-                      customEmojiId: item.custom_emoji_id,
-                      fallback: item.fallback_emoji,
-                    })
-                  }
-                  className="flex h-7 w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-[17px] transition-colors hover:bg-white/[0.07]"
-                >
-                  <PremiumEmoji item={item} size={22} />
-                </Pressable>
-              ))}
-            </div>
+          {needle ? (
+            foundStandard.length + foundPremium.length === 0 ? (
+              <p className="px-2.5 py-2 text-xs text-muted-foreground">{t("dialogs.inspector.emojiEmpty")}</p>
+            ) : (
+              <div className="grid grid-cols-8 gap-1">
+                {foundStandard.map((emoji) => standardCell(emoji.g))}
+                {foundPremium.map(premiumCell)}
+              </div>
+            )
+          ) : activePack ? (
+            <div className="grid grid-cols-8 gap-1">{activePack.items.map(premiumCell)}</div>
           ) : (
             STANDARD_EMOJI.map((group) => (
               <div key={group.key} className="mb-2">
                 <span className={`${EYEBROW_CLASS} mb-1 block`}>
                   {t(`dialogs.inspector.emojiGroup.${group.key}` as ParseKeys)}
                 </span>
-                <div className="grid grid-cols-8 gap-1">
-                  {group.items.map((emoji) => (
-                    <Pressable
-                      key={emoji.g}
-                      type="button"
-                      onClick={() => pick({ glyph: emoji.g })}
-                      className="flex h-7 w-full min-w-0 cursor-pointer items-center justify-center overflow-hidden rounded-lg text-[17px] transition-colors hover:bg-white/[0.07]"
-                    >
-                      {emoji.g}
-                    </Pressable>
-                  ))}
-                </div>
+                <div className="grid grid-cols-8 gap-1">{group.items.map((emoji) => standardCell(emoji.g))}</div>
               </div>
             ))
           )}
