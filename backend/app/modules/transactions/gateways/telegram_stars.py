@@ -14,7 +14,7 @@ from app.modules.transactions.gateways.base import (
     ProviderPayment,
     WebhookSignal,
 )
-from app.modules.transactions.gateways.common import PROVIDER_API_TIMEOUT_S
+from app.modules.transactions.gateways.common import PROVIDER_API_TIMEOUT_S, order_period_text
 
 BOT_TOKEN_SETTING: Final[str] = "bot_token"
 BOT_PROXY_SETTING: Final[str] = "bot_proxy"
@@ -72,7 +72,7 @@ class TelegramStarsGateway(PaymentGateway[StarsRuntimeSettings]):
         link = await self._call(
             "createInvoiceLink",
             title=name[:_TITLE_MAX],
-            description=f"{name}, {order.duration_days}d",
+            description=f"{name}, {order_period_text(order.duration_days)}",
             payload=order.idempotency_key,
             currency=Currency.XTR.value,
             prices=[{"label": Currency.XTR.value, "amount": stars_amount(order)}],

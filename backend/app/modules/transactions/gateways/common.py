@@ -21,6 +21,11 @@ PROVIDER_API_TIMEOUT_S: Final[float] = 8.0
 _MOSCOW: Final[timezone] = timezone(timedelta(hours=3))
 
 
+def order_period_text(days: int) -> str:
+    """The order's term as a provider's description shows it."""
+    return "unlimited" if days == 0 else f"{days}d"
+
+
 def safe_equals(left: str, right: str, *, ignore_case: bool = False) -> bool:
     if ignore_case:
         left, right = left.lower(), right.lower()
