@@ -855,6 +855,17 @@ async def test_sum_active_mrr_by_currency_normalizes_to_30_days_and_skips_inacti
         currency=Currency.RUB,
         duration_days=30,
     )
+    for telegram_id, unlimited_days in ((825_004, 0), (825_005, -1)):
+        await create_subscription(
+            subscription_repository,
+            user_repository,
+            telegram_id=telegram_id,
+            remnawave_user_id=telegram_id,
+            status=SubscriptionStatus.ACTIVE,
+            price_paid=Decimal("5000"),
+            currency=Currency.RUB,
+            duration_days=unlimited_days,
+        )
 
     result = await subscription_stats_repository.sum_active_mrr_by_currency()
 
