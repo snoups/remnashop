@@ -3996,8 +3996,26 @@
     "boostyLabel": "Boosty",
     "yookassaLabel": "ЮKassa",
     "communityTitle": "Закрытый чат",
-    "communityDescription": "Платная подписка на Boosty, которая даёт доступ к закрытому чату поддержки.",
-    "communityButton": "Получить доступ"
+    "communityDescription": "Платная подписка на Boosty, которая даёт доступ к закрытому сообществу.",
+    "communityButton": "Получить доступ",
+    "perks": {
+      "support": {
+        "title": "Приоритетная поддержка",
+        "description": "Ваши вопросы разбираются в первую очередь."
+      },
+      "community": {
+        "title": "Закрытое сообщество",
+        "description": "Круг тех, кто поддерживает проект."
+      },
+      "roadmap": {
+        "title": "Влияние на роадмап",
+        "description": "Голосуйте за то, что будет сделано дальше."
+      },
+      "developer": {
+        "title": "Прямая связь с разработчиком",
+        "description": "Без тикетов и посредников."
+      }
+    }
   },
   "debugBar": {
     "close": "Закрыть панель отладки",

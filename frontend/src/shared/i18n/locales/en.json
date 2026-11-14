@@ -3882,8 +3882,26 @@
     "boostyLabel": "Boosty",
     "yookassaLabel": "YooKassa",
     "communityTitle": "Private chat",
-    "communityDescription": "A paid subscription on Boosty that gives access to a private support chat.",
-    "communityButton": "Get access"
+    "communityDescription": "A paid subscription on Boosty that gives access to a private community.",
+    "communityButton": "Get access",
+    "perks": {
+      "support": {
+        "title": "Priority support",
+        "description": "Your questions are handled first."
+      },
+      "community": {
+        "title": "Private community",
+        "description": "A circle of people who support the project."
+      },
+      "roadmap": {
+        "title": "Shape the roadmap",
+        "description": "Vote on what gets built next."
+      },
+      "developer": {
+        "title": "Direct line to the developer",
+        "description": "No tickets, no middlemen."
+      }
+    }
   },
   "debugBar": {
     "close": "Close debug bar",

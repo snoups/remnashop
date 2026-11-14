@@ -1,11 +1,12 @@
 import { createPortal } from "react-dom";
-import { Crown, PiggyBank, Wallet } from "lucide-react";
+import { Crown, Headset, MessageCircle, PiggyBank, Route, Users, Wallet } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { BOOSTY_URL, COMMUNITY_URL, YOOKASSA_URL } from "@shared/lib/external-links";
 import { DialogHeader } from "@shared/ui/glass/DialogHeader";
+import { IconCircle } from "@shared/ui/glass/IconCircle";
 import { LABEL_CLASSNAME, MOBILE_NAV_ROW_CLASSNAME, SIDEBAR_PILL_CLASSNAME } from "@widgets/sidebar/nav-pill";
 import { ModalCloseContext, useDialogFocus } from "@shared/ui/modal-hooks";
 import {
@@ -16,6 +17,13 @@ import {
   GLASS_SOLID_LINK_BUTTON_CLASS,
 } from "@shared/ui/classes";
 import { Pressable } from "@shared/ui/Pressable";
+
+const PERKS = [
+  { icon: Headset, key: "support" },
+  { icon: Users, key: "community" },
+  { icon: Route, key: "roadmap" },
+  { icon: MessageCircle, key: "developer" },
+] as const;
 
 export function DonateButton({ mobile = false }: { mobile?: boolean }) {
   const renderOverlay = (content: ReactNode) => mobile ? createPortal(content, document.body) : content;
@@ -73,6 +81,17 @@ export function DonateButton({ mobile = false }: { mobile?: boolean }) {
                     <div className="text-sm font-medium text-foreground">{t("donate.communityTitle")}</div>
                     <p className="mt-0.5 text-xs text-muted-foreground">{t("donate.communityDescription")}</p>
                   </div>
+                  <ul className="flex flex-col gap-3">
+                    {PERKS.map(({ icon, key }) => (
+                      <li key={key} className="flex items-start gap-3">
+                        <IconCircle icon={icon} />
+                        <div>
+                          <div className="text-sm text-foreground">{t(`donate.perks.${key}.title`)}</div>
+                          <p className="text-xs text-muted-foreground">{t(`donate.perks.${key}.description`)}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                   <Pressable as="a" href={COMMUNITY_URL} target="_blank" rel="noreferrer" className={GLASS_SOLID_LINK_BUTTON_CLASS}>
                     {t("donate.communityButton")}
                   </Pressable>
