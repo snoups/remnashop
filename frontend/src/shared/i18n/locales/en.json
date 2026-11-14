@@ -4489,6 +4489,7 @@
     "PLAN_TRIAL_BADGE": "A trial plan can’t have a badge.",
     "PLAN_TRIAL_EXISTING_ACCESS": "A trial plan can’t be limited to existing users.",
     "PLAN_TRIAL_SINGLE_DURATION": "A trial plan has exactly one duration.",
+    "PLAN_TRIAL_UNLIMITED_DURATION": "A trial plan can’t be unlimited.",
     "PLAN_USED_BY_PROMOCODE": "The plan is still used by a promocode.",
     "POINTS_BELOW_ZERO": "Points can’t go below zero.",
     "POINTS_LIMIT_EXCEEDED": "Points can’t exceed the balance limit.",

@@ -36,7 +36,8 @@ class PlanPriceResponse(BaseModel):
 
 
 class PlanDurationRequest(BaseModel):
-    days: int = Field(gt=0)
+    # 0 is unlimited
+    days: int = Field(ge=0)
     order_index: int = 0
     # 0 only on a trial plan, checked by SetPlanDurationsUseCase
     base_price: Decimal = Field(ge=0)

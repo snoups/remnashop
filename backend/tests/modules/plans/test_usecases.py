@@ -235,6 +235,7 @@ async def test_owner_can_set_plan_durations(
     [
         (True, [(3, "0"), (7, "0")], ErrorCode.PLAN_TRIAL_SINGLE_DURATION),
         (False, [(30, "0")], ErrorCode.PLAN_DURATION_PRICE_REQUIRED),
+        (True, [(0, "0")], ErrorCode.PLAN_TRIAL_UNLIMITED_DURATION),
     ],
 )
 async def test_set_plan_durations_keeps_trial_and_price_rules(
@@ -265,6 +266,61 @@ async def test_set_plan_durations_keeps_trial_and_price_rules(
         await use_case(OWNER, SetPlanDurationsDto(plan_id=created.id, durations=items))
 
     assert error.value.code is code
+
+
+async def test_set_plan_durations_accepts_unlimited_on_paid_plan(
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code="forever",
+            name="Forever",
+            type=PlanType.BOTH,
+            traffic_limit=1,
+            device_limit=1,
+        )
+    )
+
+    plan = await SetPlanDurationsUseCase(plan_repository, uow, event_publisher)(
+        OWNER,
+        SetPlanDurationsDto(
+            plan_id=created.id,
+            durations=[
+                SetPlanDurationDto(days=0, order_index=0, base_price=Decimal("500")),
+                SetPlanDurationDto(days=30, order_index=1, base_price=Decimal("9.99")),
+            ],
+        ),
+    )
+
+    assert [duration.days for duration in plan.durations] == [0, 30]
+    assert [duration.days for duration in plan.sellable_durations()] == [0, 30]
+
+
+async def test_update_plan_refuses_trial_with_unlimited_duration(
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code="to-trial",
+            name="To trial",
+            type=PlanType.BOTH,
+            traffic_limit=1,
+            device_limit=1,
+        )
+    )
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=created.id,
+            durations=[SetPlanDurationDto(days=0, order_index=0, base_price=Decimal("500"))],
+        )
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await UpdatePlanUseCase(plan_repository, uow, event_publisher)(
+            OWNER, UpdatePlanDto(plan_id=created.id, is_trial=True)
+        )
+
+    assert error.value.code is ErrorCode.PLAN_TRIAL_UNLIMITED_DURATION
 
 
 async def test_regular_user_cannot_set_plan_durations(

@@ -225,6 +225,7 @@ class ErrorCode(UpperStrEnum):
     PLAN_TRIAL_BADGE = auto()
     PLAN_TRIAL_EXISTING_ACCESS = auto()
     PLAN_TRIAL_SINGLE_DURATION = auto()
+    PLAN_TRIAL_UNLIMITED_DURATION = auto()
     PLAN_USED_BY_PROMOCODE = auto()
     POINTS_BELOW_ZERO = auto()
     POINTS_LIMIT_EXCEEDED = auto()

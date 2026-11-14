@@ -2,6 +2,8 @@ from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -23,6 +25,11 @@ class UpdatePlanUseCase(UseCase[UpdatePlanDto, PlanDto]):
     async def _execute(self, actor: Actor, data: UpdatePlanDto) -> PlanDto:
         async with self._uow:
             plan = await self._plan_repository.update(data)
+            if plan.is_trial and any(duration.days == 0 for duration in plan.durations):
+                raise ValidationError(
+                    "A trial plan can't be unlimited",
+                    code=ErrorCode.PLAN_TRIAL_UNLIMITED_DURATION,
+                )
             await self._event_publisher.publish(
                 PlanChangedEvent(actor=actor, action="update", plan_id=plan.id)
             )
