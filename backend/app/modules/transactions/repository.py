@@ -309,6 +309,7 @@ class TransactionRepository:
             .where(
                 Transaction.id == order_id,
                 Transaction.user_id == user_id,
+                Transaction.is_recurring.is_(False),
                 Transaction.status == TransactionStatus.PENDING,
             )
             .values(status=TransactionStatus.CANCELED, updated_at=NOW_FUNC)
@@ -370,6 +371,9 @@ class TransactionRepository:
         )
         if row is not None:
             await RecurringPaymentRepository(self.session).on_fulfilled(row, subscription_id)
+
+    async def record_recurring_cancellation(self, order_id: int, reason: str) -> None:
+        await RecurringPaymentRepository(self.session).on_canceled(order_id, reason)
 
     async def remember_payment_method(
         self, order_id: int, payment_method_id: Optional[str], shop_id: Optional[str]

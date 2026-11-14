@@ -69,13 +69,18 @@ class _YooKassa:
         self.lose_response = False
         self.reject = False
         self.reject_code = 400
+        self.reject_body = {
+            "type": "error",
+            "code": "invalid_request",
+            "parameter": "receipt.items",
+        }
         self.cancellation_reason = "bank_declined"
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
         if request.method == "POST":
             if self.reject:
-                return httpx.Response(self.reject_code, json={"code": "invalid_payment_method"})
+                return httpx.Response(self.reject_code, json=self.reject_body)
             key = request.headers["Idempotence-Key"]
             payment_id = self.keys.setdefault(key, f"payment-{len(self.keys) + 1}")
             self.references[payment_id] = json.loads(request.content)["metadata"]["order_ref"]
@@ -172,7 +177,7 @@ async def case(
             {
                 "shop_id": "1000",
                 "api_key": "test-key",
-                "recurring_enabled": "true",
+                "payment_mode": "both",
             },
         )
         await gateway_repository.set_active(PaymentGatewayType.YOOKASSA, True)
@@ -360,7 +365,7 @@ async def test_disabling_shop_stops_new_requests_but_confirms_in_flight_payment(
     await case.worker.system()
     async with uow:
         await gateway_repository.update_settings(
-            PaymentGatewayType.YOOKASSA, {"recurring_enabled": "false"}
+            PaymentGatewayType.YOOKASSA, {"payment_mode": "single"}
         )
     case.provider.status = "succeeded"
     await _tick_again(case, uow)
@@ -368,7 +373,7 @@ async def test_disabling_shop_stops_new_requests_but_confirms_in_flight_payment(
     assert len(case.dispatch.messages) == 1
 
 
-@pytest.mark.parametrize("setting", ["recurring_enabled", "is_active"])
+@pytest.mark.parametrize("setting", ["payment_mode", "is_active"])
 async def test_disabled_gateway_never_starts_a_charge(
     case, gateway_repository, uow, setting
 ) -> None:
@@ -377,7 +382,7 @@ async def test_disabled_gateway_never_starts_a_charge(
             await gateway_repository.set_active(PaymentGatewayType.YOOKASSA, False)
         else:
             await gateway_repository.update_settings(
-                PaymentGatewayType.YOOKASSA, {setting: "false"}
+                PaymentGatewayType.YOOKASSA, {setting: "single"}
             )
     await case.worker.system()
     assert not case.provider.posts
@@ -735,7 +740,7 @@ async def test_unknown_payment_leaves_the_active_queue(
     mandate = await case.repository.get(case.subscription.id)
     order = await transaction_repository.get_by_id(order_id)
     assert mandate.pending_transaction_id is None
-    assert mandate.attempted_at is None
+    assert mandate.submitted_at is not None
     assert not mandate.enabled
     assert mandate.last_error == "payment_status_unknown"
     assert order.status is TransactionStatus.FAILED
@@ -774,7 +779,7 @@ async def test_manual_payment_restores_renewals_after_an_unknown_payment(
     assert json.loads(case.provider.posts[-1].content)["payment_method_id"] == "fresh-method"
 
 
-async def test_manual_payment_releases_a_legacy_unknown_pending_order(
+async def test_manual_payment_releases_an_aged_unknown_pending_order(
     case, transaction_repository, session, uow
 ) -> None:
     await _lose_recurring_payment(case, session, uow)
@@ -784,36 +789,6 @@ async def test_manual_payment_releases_a_legacy_unknown_pending_order(
     mandate = await case.repository.get(case.subscription.id)
     assert mandate.pending_transaction_id is None
     assert mandate.enabled and mandate.last_error is None
-
-
-async def test_worker_repairs_an_already_reenrolled_legacy_mandate(
-    case, transaction_repository, session, uow
-) -> None:
-    old_id = await _lose_recurring_payment(case, session, uow)
-    manual = await _manual_renewal(case, transaction_repository, session, uow)
-    async with uow:
-        await session.execute(
-            update(Transaction)
-            .where(Transaction.id == old_id)
-            .values(status=TransactionStatus.PENDING)
-        )
-        await session.execute(
-            update(RecurringPayment)
-            .where(RecurringPayment.subscription_id == case.subscription.id)
-            .values(
-                pending_transaction_id=old_id,
-                enabled=True,
-                last_error=None,
-                next_attempt_at=datetime_now() - timedelta(seconds=1),
-            )
-        )
-    await case.worker.system()
-    repaired = await case.repository.get(case.subscription.id)
-    assert repaired.pending_transaction_id is None
-    assert repaired.source_transaction_id == manual.id
-    assert repaired.enabled and repaired.last_error is None
-    assert (await transaction_repository.get_by_id(old_id)).status is TransactionStatus.FAILED
-    assert len(case.provider.posts) == 1
 
 
 async def test_unknown_retirement_rolls_back_the_order_and_mandate_together(
@@ -924,7 +899,7 @@ async def test_toggling_preference_cannot_erase_an_unknown_payment(
     disabled = await case.set_state(
         case.user, SetRecurringPaymentDto(subscription_id=case.subscription.id, enabled=False)
     )
-    assert disabled.last_error == "payment_status_unknown"
+    assert disabled.last_error == "customer_disabled"
     assert disabled.customer_disabled and not disabled.available
     with pytest.raises(ValidationError):
         await case.set_state(
@@ -935,7 +910,7 @@ async def test_toggling_preference_cannot_erase_an_unknown_payment(
     assert not state.customer_disabled and state.enabled and state.available
 
 
-async def test_a_legacy_mandate_without_explicit_consent_is_not_charged(case, session, uow):
+async def test_a_mandate_without_explicit_consent_is_not_charged(case, session, uow):
     async with uow:
         await session.execute(
             update(RecurringPayment)
@@ -945,7 +920,7 @@ async def test_a_legacy_mandate_without_explicit_consent_is_not_charged(case, se
     await case.worker.system()
     state = await case.get_state(case.user, case.subscription.id)
     assert not case.provider.posts
-    assert not state.enabled and state.available
+    assert not state.enabled and not state.available
     assert state.last_error == "consent_required"
 
 
@@ -1037,7 +1012,7 @@ async def test_an_ambiguous_request_is_not_retried_beyond_the_agreed_overdue_win
     await _tick_again(case, uow)
     assert len(case.provider.posts) == 1
     mandate = await case.repository.get(case.subscription.id)
-    assert mandate.enabled and mandate.last_error == "subscription_unavailable"
+    assert not mandate.enabled and mandate.last_error == "renewal_window_expired"
 
 
 async def test_account_merge_preserves_authorized_owner_and_immutable_consent(

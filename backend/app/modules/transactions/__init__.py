@@ -28,6 +28,7 @@ from app.modules.transactions.recurring_events import (
     RecurringPaymentPausedEvent,
     RecurringPaymentUpcomingEvent,
 )
+from app.modules.transactions.recurring_policy import RecurringReason
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.stats_repository import TransactionStatsRepository
 from app.modules.transactions.usecases import (
@@ -69,6 +70,7 @@ __all__ = [
     "RecurringPaymentPausedEvent",
     "RecurringPaymentState",
     "RecurringPaymentUpcomingEvent",
+    "RecurringReason",
     "SetOwnRecurringPaymentUseCase",
     "SetRecurringPaymentDto",
     "StarsPaymentDto",

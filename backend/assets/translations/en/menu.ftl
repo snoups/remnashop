@@ -642,3 +642,5 @@ frg-subscription-recurring-next-retry = Next payment attempt: { $when } UTC.
 frg-subscription-recurring-next-check = Next payment check: { $when } UTC.
 
 frg-purchase-recurring-preserved = A one-time payment does not cancel previously enabled auto-renewal. You can disable it in your subscription settings.
+
+frg-purchase-recurring-plan-change = Changing the plan disables auto-renewal of the previous subscription. The new plan requires separate consent.

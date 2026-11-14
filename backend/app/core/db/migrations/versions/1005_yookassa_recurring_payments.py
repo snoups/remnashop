@@ -84,7 +84,7 @@ def upgrade() -> None:
             unique=True,
             nullable=True,
         ),
-        sa.Column("attempted_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("submitted_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("first_failure_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("retry_count", sa.Integer(), server_default="0", nullable=False),
         sa.Column("cycle_expire_at", sa.DateTime(timezone=True), nullable=True),

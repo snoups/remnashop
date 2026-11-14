@@ -72,6 +72,7 @@ from app.modules.subscriptions.usecases import (
     UpdateSubscriptionSquadsUseCase,
     UpdateSubscriptionUseCase,
 )
+from app.modules.transactions.recurring_repository import RecurringPaymentRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave import FakeHwidStore, FakeUserStore
@@ -121,6 +122,7 @@ def purchase_use_case(
         idempotency_repository,
         UserRepository(subscription_repository.session),
         AppConfig.get(),
+        recurring_closer=RecurringPaymentRepository(subscription_repository.session),
     )
 
 

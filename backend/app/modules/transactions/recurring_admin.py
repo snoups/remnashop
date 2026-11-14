@@ -6,8 +6,7 @@ from typing import Literal, Optional
 from pydantic import BaseModel
 
 from app.core.constants import DEFAULT_PAGE_SIZE
-
-RecurringState = Literal["enabled", "disabled", "pending", "retrying", "attention"]
+from app.modules.transactions.recurring_policy import RecurringState
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -28,8 +27,12 @@ class RecurringPaymentAdminItem(BaseModel):
     state: RecurringState
     last_error: Optional[str]
     next_attempt_at: Optional[datetime]
-    attempted_at: Optional[datetime]
+    submitted_at: Optional[datetime]
     pending_transaction_id: Optional[int]
+    external_payment_id: Optional[str]
+    can_check: bool
+    can_close: bool
+    can_retry: bool
     retry_count: int
     first_failure_at: Optional[datetime]
     amount_limit: Optional[Decimal]
@@ -56,3 +59,14 @@ class RecurringPaymentAdminPage(BaseModel):
     page: int
     page_size: int
     summary: RecurringPaymentAdminSummary
+
+
+RecurringAction = Literal["check", "close", "retry"]
+
+
+@dataclass(frozen=True, kw_only=True)
+class ManageRecurringPaymentDto:
+    subscription_id: int
+    action: RecurringAction
+    expected_pending_transaction_id: Optional[int] = None
+    client_ip: Optional[str] = None

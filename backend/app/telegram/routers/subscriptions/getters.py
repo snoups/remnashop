@@ -22,7 +22,11 @@ from app.modules.subscriptions import (
     SubscriptionDto,
     SubscriptionRefDto,
 )
-from app.modules.transactions import GetOwnRecurringPaymentUseCase, RecurringPaymentState
+from app.modules.transactions import (
+    GetOwnRecurringPaymentUseCase,
+    RecurringPaymentState,
+    RecurringReason,
+)
 from app.modules.users import UserDto
 from app.telegram.banners import window_banner
 from app.telegram.dialogs.config_cache import DialogConfigCache
@@ -104,7 +108,9 @@ def _recurring_card_notice(recurring: RecurringPaymentState, runner: TranslatorR
     if not (recurring.enabled or recurring.available or recurring.paused):
         return ""
     state_key = "frg-subscription-recurring-off"
-    if recurring.paused:
+    if recurring.customer_disabled:
+        state_key = "frg-subscription-recurring-off"
+    elif recurring.paused:
         state_key = "frg-subscription-recurring-paused"
     elif recurring.payment_pending:
         state_key = "frg-subscription-recurring-pending"
@@ -118,7 +124,13 @@ def _recurring_card_notice(recurring: RecurringPaymentState, runner: TranslatorR
         currency=recurring.currency,
         days=recurring.duration_days,
     )
-    if recurring.last_error and not recurring.customer_disabled:
+    try:
+        visible_reason = bool(
+            recurring.last_error and RecurringReason(recurring.last_error).policy.customer_notice
+        )
+    except ValueError:
+        visible_reason = False
+    if visible_reason and not recurring.customer_disabled:
         reason = runner.get("ntf-recurring-reason", reason=recurring.last_error)
         text += "\n" + runner.get(
             "frg-subscription-recurring-reason",
@@ -173,14 +185,14 @@ async def subscription_card_getter(
     else:
         recurring = await get_own_recurring_payment(user, subscription.id)
         data["auto_renew_on"] = recurring.available and not recurring.enabled
-        data["auto_renew_off"] = recurring.enabled
+        data["auto_renew_off"] = recurring.can_disable
         data["auto_renew_terms"] = bool(recurring.terms or recurring.accepted_terms)
         data["auto_renew_terms_text"] = runner.get("btn-recurring.terms")
         if recurring.terms is not None:
             dialog_manager.dialog_data["auto_renew_terms_id"] = recurring.terms.terms_id
             data["auto_renew_choices"] = [{"id": consent_callback_id(recurring.terms.terms_id)}]
         data["auto_renew_text"] = runner.get(
-            "btn-recurring.disable" if recurring.enabled else "btn-recurring.enable"
+            "btn-recurring.disable" if recurring.can_disable else "btn-recurring.enable"
         )
         data["window_text"] = render_window_text(
             runner,

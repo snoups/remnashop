@@ -17,7 +17,11 @@ from app.modules.subscriptions import (
     ListOwnSubscriptionsUseCase,
     SubscriptionDto,
 )
-from app.modules.transactions import GetCheckoutRecurringTermsUseCase, QuoteCheckoutUseCase
+from app.modules.transactions import (
+    GetCheckoutRecurringTermsUseCase,
+    GetOwnRecurringPaymentUseCase,
+    QuoteCheckoutUseCase,
+)
 from app.modules.users import UserDto
 from app.telegram.dialogs.context import selected_subscription_id
 from app.telegram.dialogs.rendering import TrustedHtml, label_with_icon, render_window_text
@@ -291,6 +295,7 @@ async def confirm_getter(
     list_own_subscriptions: FromDishka[ListOwnSubscriptionsUseCase],
     list_visible_legal_documents: FromDishka[ListVisibleLegalDocumentsUseCase],
     get_recurring_terms: FromDishka[GetCheckoutRecurringTermsUseCase],
+    get_own_recurring_payment: FromDishka[GetOwnRecurringPaymentUseCase],
     i18n: FromDishka[TranslatorHub],
     **kwargs: Any,
 ) -> dict[str, Any]:
@@ -326,11 +331,19 @@ async def confirm_getter(
     if data.get("recurring_required") and Decimal(data["prices"][data["currency"]]) > 0:
         recurring_notice += "\n" + html.escape(runner.get("frg-purchase-recurring-required"))
     if (
-        purchase_type in {PurchaseType.RENEW, PurchaseType.CHANGE}
+        renewed is not None
+        and purchase_type in {PurchaseType.RENEW, PurchaseType.CHANGE}
         and not accepted
         and not data.get("recurring_required")
     ):
-        recurring_notice += "\n" + html.escape(runner.get("frg-purchase-recurring-preserved"))
+        current_recurring = await get_own_recurring_payment(user, renewed.id)
+        if current_recurring.enabled and not current_recurring.customer_disabled:
+            key = (
+                "frg-purchase-recurring-plan-change"
+                if purchase_type is PurchaseType.CHANGE
+                else "frg-purchase-recurring-preserved"
+            )
+            recurring_notice += "\n" + html.escape(runner.get(key))
     return {
         "window_text": render_window_text(
             runner,

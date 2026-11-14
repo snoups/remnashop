@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+import app.telegram.routers.subscriptions.getters as getters
 from app.core.constants import USER_KEY
 from app.core.enums import Locale, SubscriptionStatus
 from app.modules.dialogs import catalog
@@ -233,3 +234,41 @@ def test_retry_notice_shows_the_reason_and_actual_next_attempt():
     assert "повторная оплата" in text
     assert "недостаточно средств" in text
     assert "15.11.2026 13:00 UTC" in text
+
+
+async def test_paused_subscription_keeps_the_withdrawal_button(monkeypatch):
+    user = _user()
+    subscription = _subscription(7, "https://example.test/subscription")
+    manager = MagicMock()
+    manager.middleware_data = {USER_KEY: user}
+    manager.dialog_data = {SELECTED_SUBSCRIPTION_KEY: subscription.id}
+    manager.start_data = {}
+    state = RecurringPaymentState(
+        subscription_id=subscription.id,
+        enabled=False,
+        available=False,
+        can_disable=True,
+        paused=True,
+        last_error="payment_status_unknown",
+    )
+    monkeypatch.setattr(
+        getters, "build_condition_data", AsyncMock(return_value={"subscription": subscription})
+    )
+    monkeypatch.setattr(getters, "window_banner", AsyncMock(return_value=None))
+    monkeypatch.setattr(getters, "render_dialog_buttons", AsyncMock(return_value=[]))
+    monkeypatch.setattr(getters, "render_window_text", lambda *args, **kwargs: "Subscription")
+    hub = build_translator_hub([Locale.EN], {Locale.EN: seeded_fluent_source(Locale.EN)}, Locale.EN)
+    result = await getters.subscription_card_getter.__dishka_orig_func__(
+        manager,
+        config=MagicMock(),
+        get_banner=AsyncMock(),
+        list_own_subscriptions=AsyncMock(return_value=[subscription]),
+        get_available_trial=AsyncMock(),
+        i18n=hub,
+        dialog_config_cache=MagicMock(),
+        get_own_recurring_payment=AsyncMock(return_value=state),
+    )
+    assert result["auto_renew_off"] is True and result["auto_renew_on"] is False
+    assert result["auto_renew_text"] == hub.get_translator_by_locale(Locale.EN.value).get(
+        "btn-recurring.disable"
+    )

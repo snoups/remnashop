@@ -98,3 +98,12 @@ class UnratedAnchorAmountsRatedEvent(ActorEvent):
     category: ClassVar[EventCategory] = EventCategory.PRICING
     currencies: list[Currency]
     count: int
+
+
+@dataclass(frozen=True, kw_only=True)
+class RecurringPaymentManagedEvent(ActorTargetEvent):
+    category: ClassVar[EventCategory] = EventCategory.PAYMENT
+    subscription_id: int
+    action: str
+    order_id: Optional[int]
+    previous_reason: Optional[str]

@@ -17,7 +17,11 @@ from app.modules.subscriptions.dto import (
     SubscriptionDto,
     SubscriptionRefDto,
 )
-from app.modules.subscriptions.eligibility import PurchaseEligibility, get_owned_target
+from app.modules.subscriptions.eligibility import (
+    PurchaseEligibility,
+    get_manageable_subscription,
+    get_owned_target,
+)
 from app.modules.subscriptions.events import (
     SubscriptionAddOnGrantedEvent,
     SubscriptionChangedEvent,
@@ -41,6 +45,7 @@ from app.modules.subscriptions.plan_snapshot_response import PlanSnapshotRespons
 from app.modules.subscriptions.ports import (
     OpenOrderCounter,
     OrderFailer,
+    RecurringPaymentCloser,
     ReferrerLookup,
     SpentPurchaseDiscount,
 )
@@ -98,6 +103,7 @@ __all__ = [
     "PurchaseSubscriptionDispatch",
     "PurchaseSubscriptionDto",
     "PurchaseSubscriptionUseCase",
+    "RecurringPaymentCloser",
     "ReferrerLookup",
     "ReissueSubscriptionUseCase",
     "RollbackPreviewDto",
@@ -118,6 +124,7 @@ __all__ = [
     "SubscriptionTrafficLimitedEvent",
     "SubscriptionTrafficThresholdEvent",
     "TorrentBlockerReportEvent",
+    "get_manageable_subscription",
     "get_owned_target",
     "get_subscriptions_providers",
     "missing_squads",

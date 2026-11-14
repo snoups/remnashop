@@ -27,7 +27,8 @@ class RecurringPayment(BaseSql, TimestampMixin):
     pending_transaction_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("transactions.id"), unique=True
     )
-    attempted_at: Mapped[Optional[datetime]]
+    # Durable intent after authorization: a crash after it may have reached YooKassa.
+    submitted_at: Mapped[Optional[datetime]]
     first_failure_at: Mapped[Optional[datetime]]
     retry_count: Mapped[int] = mapped_column(default=0, server_default="0")
     # The expiry this cycle pays for; a manual extension supersedes unsent retries.

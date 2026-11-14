@@ -57,6 +57,7 @@ from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.stats_repository import SubscriptionStatsRepository
 from app.modules.subscriptions.usecases import PurchaseSubscriptionUseCase
+from app.modules.transactions.recurring_repository import RecurringPaymentRepository
 from app.modules.translations.repository import TranslationRepository
 from app.modules.users.blacklist_repository import UserBlacklistRepository
 from app.modules.users.repository import UserRepository
@@ -235,6 +236,7 @@ def purchase_subscription_use_case(
         PurchaseIdempotencyRepository(subscription_repository.session),
         UserRepository(subscription_repository.session),
         AppConfig.get(),
+        recurring_closer=RecurringPaymentRepository(subscription_repository.session),
     )
 
 

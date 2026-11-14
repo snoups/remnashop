@@ -28,7 +28,11 @@ from app.modules.customer_notifications.links import customer_url
 from app.modules.customer_notifications.metrics import CUSTOMER_NOTIFICATIONS
 from app.modules.customer_notifications.render_args import customer_render_args
 from app.modules.customer_notifications.repository import CustomerNotificationRepository
-from app.modules.customer_notifications.routing import CustomerChannel, channels_for
+from app.modules.customer_notifications.routing import (
+    CustomerChannel,
+    channels_for,
+    should_notify_customer,
+)
 from app.modules.customer_notifications.waitlist import PAYMENTS_RESTORED
 from app.modules.email import SendEmailDispatch, load_email_brand, render_email
 from app.modules.notifications import (
@@ -164,6 +168,8 @@ class NotifyCustomerUseCase(UseCase[NotifyCustomerDto, None]):
             raise RetryableTaskError(str(error)) from error
 
     async def _notify(self, data: NotifyCustomerDto) -> None:
+        if not should_notify_customer(data.event_type, data.args):
+            return
         async with self._uow:
             user = await self._user_repository.find_by_id(data.user_id)
         if user is None or user.is_blocked or user.deleted_at is not None:

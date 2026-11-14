@@ -32,7 +32,10 @@ from app.modules.transactions.usecases import GetTransactionUseCase, ListTransac
 from app.modules.users.dto import CreateUserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.container import make_test_container
+from tests.modules.transactions import test_recurring_payments as recurring_cases
 from tests.modules.transactions.test_repository import _order_dto
+
+case = recurring_cases.case
 
 
 class _TransactionsProvider(Provider):
@@ -349,3 +352,61 @@ async def test_recurring_permission_does_not_require_other_transaction_permissio
     assert (
         await client.get(f"{API_V1}/transactions/summary", headers=admin_auth_headers)
     ).status_code == 403
+
+
+@pytest.mark.parametrize("action", ["check", "close", "retry"])
+async def test_recurring_management_has_a_separate_permission(
+    client, admin_auth_headers, user_repository, session, uow, action
+):
+    admin = await user_repository.find_by_login("transactionsadmin")
+    async with uow:
+        row = await session.get(User, admin.id)
+        row.permission_revokes = ["TRANSACTIONS_RECURRING_MANAGE"]
+        await session.flush()
+    response = await client.post(
+        f"{API_V1}/transactions/recurring/1/actions/{action}",
+        headers=admin_auth_headers,
+        json={"expected_pending_transaction_id": None},
+    )
+    assert response.status_code == 403
+
+
+async def test_recurring_management_rejects_unknown_action(client, owner_auth_headers):
+    response = await client.post(
+        f"{API_V1}/transactions/recurring/1/actions/charge",
+        headers=owner_auth_headers,
+        json={"expected_pending_transaction_id": None},
+    )
+    assert response.status_code == 422
+
+
+async def test_recurring_close_uses_the_pending_order_confirmed_by_the_operator(
+    client, owner_auth_headers, case, transaction_repository
+):
+    case.provider.status = "pending"
+    await case.worker.system()
+    before = await case.repository.get(case.subscription.id)
+    path = f"{API_V1}/transactions/recurring/{case.subscription.id}/actions/close"
+    stale = await client.post(
+        path,
+        headers=owner_auth_headers,
+        json={"expected_pending_transaction_id": before.pending_transaction_id + 1},
+    )
+    assert stale.status_code == 409
+    assert (
+        await transaction_repository.get_by_id(before.pending_transaction_id)
+    ).status is TransactionStatus.PENDING
+    closed = await client.post(
+        path,
+        headers=owner_auth_headers,
+        json={"expected_pending_transaction_id": before.pending_transaction_id},
+    )
+    assert closed.status_code == 204
+    after = await case.repository.get(case.subscription.id)
+    assert (
+        not after.enabled
+        and after.last_error == "admin_closed"
+        and after.pending_transaction_id is None
+    )
+    assert await case.repository.consent_terms(before.consent_id) is None
+    assert len(case.provider.posts) == 1

@@ -56,6 +56,7 @@ from app.modules.transactions.usecases import (
     ListTransactionsUseCase,
 )
 from app.modules.transactions.usecases.list_recurring_payments import ListRecurringPaymentsUseCase
+from app.modules.transactions.usecases.manage_recurring_payment import ManageRecurringPaymentUseCase
 from app.modules.translations.usecases import (
     AddLocaleUseCase,
     RemoveLocaleUseCase,
@@ -101,6 +102,7 @@ from app.modules.users.usecases import GetUserUseCase, SetUserDiscountUseCase
         (SetUserDiscountUseCase, Permission.USERS_DISCOUNT_MANAGE),
         (ListTransactionsUseCase, Permission.TRANSACTIONS_VIEW),
         (ListRecurringPaymentsUseCase, Permission.TRANSACTIONS_RECURRING_VIEW),
+        (ManageRecurringPaymentUseCase, Permission.TRANSACTIONS_RECURRING_MANAGE),
         (ListTransactionGatewaysUseCase, Permission.TRANSACTIONS_GATEWAYS_VIEW),
         (GetTransactionUseCase, Permission.TRANSACTIONS_DETAIL_VIEW),
         (FulfillTransactionUseCase, Permission.TRANSACTIONS_FULFILL),

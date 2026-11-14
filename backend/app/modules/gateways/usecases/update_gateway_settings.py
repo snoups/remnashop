@@ -2,7 +2,6 @@ from loguru import logger
 
 from app.core.actor import Actor
 from app.core.db.uow import UnitOfWork
-from app.core.enums import PaymentGatewayType
 from app.core.ports import EventPublisher
 from app.core.security.permissions import Permission
 from app.core.usecase import UseCase
@@ -32,14 +31,6 @@ class UpdateGatewaySettingsUseCase(UseCase[UpdateGatewaySettingsDto, PaymentGate
         validate_gateway_field_keys(data.type, data.values)
         validate_gateway_field_values(data.type, data.values)
         values = dict(data.values)
-        if (
-            data.type is PaymentGatewayType.YOOKASSA
-            and "recurring_enabled" in values
-            and "payment_mode" not in values
-        ):
-            # Old clients must still be able to turn recurring charges off after a mode was saved.
-            values["payment_mode"] = "both" if values["recurring_enabled"] == "true" else "single"
-
         async with self._uow:
             gateway = await self._gateway_repository.update_settings(data.type, values)
             await self._event_publisher.publish(

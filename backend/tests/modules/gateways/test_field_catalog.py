@@ -160,17 +160,6 @@ def test_yookassa_payment_mode_has_explicit_catalog_options_and_safe_flags(mode,
     assert settings.payment_mode == mode and settings.recurring_enabled is enabled
 
 
-@pytest.mark.parametrize(("legacy", "mode"), [("true", "both"), ("false", "single")])
-def test_existing_yookassa_recurring_flag_keeps_its_meaning(legacy, mode):
-    settings = YooKassaSettings.from_values(
-        {"shop_id": "1", "api_key": "key", "recurring_enabled": legacy}
-    )
-    assert settings.payment_mode == mode
-    assert gateway_flags(PaymentGatewayType.YOOKASSA, {"recurring_enabled": legacy})[
-        "recurring_enabled"
-    ] == (legacy == "true")
-
-
 def test_yookassa_payment_mode_rejects_unknown_choice():
     with pytest.raises(ValidationError):
         validate_gateway_field_values(PaymentGatewayType.YOOKASSA, {"payment_mode": "automatic"})

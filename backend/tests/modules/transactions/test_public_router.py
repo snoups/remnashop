@@ -426,7 +426,7 @@ async def test_checkout_requires_explicit_consent_and_records_the_exact_terms(
 ):
     await gateway_repository.update_settings(
         PaymentGatewayType.YOOKASSA,
-        {"shop_id": "1000", "api_key": "test_key", "recurring_enabled": "true"},
+        {"shop_id": "1000", "api_key": "test_key", "payment_mode": "both"},
     )
     await gateway_repository.set_active(PaymentGatewayType.YOOKASSA, True)
     payload = {
@@ -468,7 +468,7 @@ async def test_checkout_rejects_unconfirmed_or_changed_renewal_terms(
 ):
     await gateway_repository.update_settings(
         PaymentGatewayType.YOOKASSA,
-        {"shop_id": "1000", "api_key": "test_key", "recurring_enabled": "true"},
+        {"shop_id": "1000", "api_key": "test_key", "payment_mode": "both"},
     )
     await gateway_repository.set_active(PaymentGatewayType.YOOKASSA, True)
     before = len(_YOOKASSA_REQUESTS)
@@ -498,7 +498,7 @@ async def test_replacing_a_recurring_checkout_revokes_its_authorization(
 ):
     await gateway_repository.update_settings(
         PaymentGatewayType.YOOKASSA,
-        {"shop_id": "1000", "api_key": "test_key", "recurring_enabled": "true"},
+        {"shop_id": "1000", "api_key": "test_key", "payment_mode": "both"},
     )
     await gateway_repository.set_active(PaymentGatewayType.YOOKASSA, True)
     payload = {

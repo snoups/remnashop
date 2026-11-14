@@ -2,7 +2,12 @@ from typing import Optional
 
 import pytest
 
-from app.modules.customer_notifications.routing import CustomerChannel, channels_for
+from app.modules.customer_notifications.routing import (
+    CustomerChannel,
+    channels_for,
+    should_notify_customer,
+)
+from app.modules.transactions import RecurringReason
 
 T, E = CustomerChannel.TELEGRAM, CustomerChannel.EMAIL
 
@@ -29,3 +34,19 @@ def test_channels(
     expected: list[CustomerChannel],
 ) -> None:
     assert channels_for(event_type, telegram_id=telegram_id, email=email) == expected
+
+
+@pytest.mark.parametrize("reason", list(RecurringReason))
+@pytest.mark.parametrize(
+    "event_type",
+    [
+        "RecurringPaymentFailedEvent",
+        "RecurringPaymentPausedEvent",
+        "RecurringPaymentExhaustedEvent",
+    ],
+)
+def test_recurring_customer_notifications_follow_the_reason_policy(reason, event_type):
+    assert (
+        should_notify_customer(event_type, {"reason": reason.value})
+        is reason.policy.customer_notice
+    )

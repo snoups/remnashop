@@ -199,6 +199,7 @@ class Permission(UpperStrEnum):
     TRANSACTIONS_VIEW = auto()
     TRANSACTIONS_SUMMARY_VIEW = auto()
     TRANSACTIONS_RECURRING_VIEW = auto()
+    TRANSACTIONS_RECURRING_MANAGE = auto()
     TRANSACTIONS_DETAIL_VIEW = auto()
     TRANSACTIONS_GATEWAYS_VIEW = auto()
     TRANSACTIONS_FULFILL = auto()
@@ -459,6 +460,7 @@ PERMISSION_METADATA: Final[dict[Permission, PermissionMeta]] = {
     Permission.TRANSACTIONS_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_SUMMARY_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_RECURRING_VIEW: PermissionMeta(resource="transactions", kind="read"),
+    Permission.TRANSACTIONS_RECURRING_MANAGE: PermissionMeta(resource="transactions", kind="write"),
     Permission.TRANSACTIONS_DETAIL_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_GATEWAYS_VIEW: PermissionMeta(resource="transactions", kind="read"),
     Permission.TRANSACTIONS_FULFILL: PermissionMeta(resource="transactions", kind="write"),
@@ -786,6 +788,7 @@ ROLE_PERMISSIONS: Final[dict[Role, frozenset[Permission]]] = {
             Permission.TRANSACTIONS_VIEW,
             Permission.TRANSACTIONS_SUMMARY_VIEW,
             Permission.TRANSACTIONS_RECURRING_VIEW,
+            Permission.TRANSACTIONS_RECURRING_MANAGE,
             Permission.TRANSACTIONS_DETAIL_VIEW,
             Permission.TRANSACTIONS_GATEWAYS_VIEW,
             Permission.TRANSACTIONS_FULFILL,

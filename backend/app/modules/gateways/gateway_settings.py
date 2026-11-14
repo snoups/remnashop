@@ -1,6 +1,6 @@
 from typing import Any, Final, Literal, NewType, Optional, Self, cast
 
-from pydantic import BaseModel, ConfigDict, SecretStr, ValidationError, model_validator
+from pydantic import BaseModel, ConfigDict, SecretStr, ValidationError
 
 from app.core.enums import PaymentGatewayType
 from app.core.exceptions import PaymentGatewayError
@@ -40,7 +40,7 @@ def yookassa_payment_mode(values: dict[str, Any]) -> YooKassaPaymentMode:
         return (
             cast(YooKassaPaymentMode, mode) if mode in {"single", "recurring", "both"} else "single"
         )
-    return "both" if values.get("recurring_enabled") in (True, "true") else "single"
+    return "single"
 
 
 class YooKassaSettings(GatewaySettings):
@@ -49,13 +49,6 @@ class YooKassaSettings(GatewaySettings):
     vat_code: Optional[NumericStr] = None
     verify_ip: bool = True
     payment_mode: YooKassaPaymentMode = "single"
-
-    @model_validator(mode="before")
-    @classmethod
-    def _legacy_mode(cls, values: Any) -> Any:
-        if isinstance(values, dict) and "payment_mode" not in values:
-            return {**values, "payment_mode": yookassa_payment_mode(values)}
-        return values
 
     @property
     def recurring_enabled(self) -> bool:

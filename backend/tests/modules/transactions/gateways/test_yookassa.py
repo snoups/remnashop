@@ -265,7 +265,7 @@ async def test_saving_a_method_requires_the_shop_flag_and_a_real_recurring_order
         json_response({"id": "yk-1", "confirmation": {"confirmation_url": "https://pay/1"}})
     )
     gateway = YooKassaGateway(
-        settings={**_SETTINGS, "recurring_enabled": str(enabled).lower()},
+        settings={**_SETTINGS, "payment_mode": "both" if enabled else "single"},
         webhook_url=WEBHOOK_URL,
         return_url=RETURN_URL,
         http=http.client,
@@ -277,7 +277,7 @@ async def test_saving_a_method_requires_the_shop_flag_and_a_real_recurring_order
 async def test_recurring_charge_uses_saved_id_without_redirect_and_keeps_receipt() -> None:
     http = HttpRecorder(json_response({"id": "yk-recurring", "status": "pending"}))
     gateway = YooKassaGateway(
-        settings={**_SETTINGS, "recurring_enabled": "true", "vat_code": "1"},
+        settings={**_SETTINGS, "payment_mode": "both", "vat_code": "1"},
         webhook_url=WEBHOOK_URL,
         return_url=RETURN_URL,
         http=http.client,
@@ -317,3 +317,30 @@ async def test_recurring_verification_rejects_a_different_payment_id() -> None:
     http = HttpRecorder(json_response(_payment(id="some-other-payment")))
     with pytest.raises(PaymentGatewayError):
         await _gateway(http=http.client).check_payment(make_order(external_payment_id="yk-1"))
+
+
+@pytest.mark.parametrize("stored", [False, True])
+@pytest.mark.parametrize("mismatch", ["reference", "amount", "currency", "id"])
+async def test_cancellation_confirmation_rejects_payment_for_another_order(stored, mismatch):
+    values = {"status": "canceled", "paid": False}
+    values.update(
+        {
+            "reference": {"metadata": {"order_ref": "other"}},
+            "amount": {"amount": {"value": "499.00", "currency": "RUB"}},
+            "currency": {"amount": {"value": "500.00", "currency": "USD"}},
+            "id": {"id": "different-payment"},
+        }[mismatch]
+    )
+    http = HttpRecorder(json_response(_payment(**values)))
+    signal = WebhookSignal(
+        reference=ORDER_REF,
+        claims_paid=False,
+        provider_payment_id="yk-1",
+        reported_status=TransactionStatus.CANCELED,
+    )
+    order = make_order(external_payment_id="yk-1" if stored else None)
+    if mismatch == "id":
+        with pytest.raises(PaymentGatewayError):
+            await _gateway(http=http.client).confirm_reported(order, signal)
+    else:
+        assert await _gateway(http=http.client).confirm_reported(order, signal) is None

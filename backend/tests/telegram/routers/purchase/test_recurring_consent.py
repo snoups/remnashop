@@ -55,6 +55,7 @@ async def _render(manager, terms):
         list_active_plans=AsyncMock(return_value=_CATALOG),
         list_own_subscriptions=AsyncMock(return_value=[]),
         list_visible_legal_documents=MagicMock(execute=AsyncMock(return_value=[])),
+        get_own_recurring_payment=AsyncMock(),
         get_recurring_terms=AsyncMock(return_value=terms),
         i18n=_i18n(),
     )

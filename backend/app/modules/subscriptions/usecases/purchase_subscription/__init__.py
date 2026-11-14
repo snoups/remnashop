@@ -19,6 +19,7 @@ from app.modules.subscriptions.dto import PurchaseSubscriptionDto, SubscriptionD
 from app.modules.subscriptions.eligibility import PurchaseEligibility
 from app.modules.subscriptions.idempotency_repository import PurchaseIdempotencyRepository
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
+from app.modules.subscriptions.ports import RecurringPaymentCloser
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases.purchase_subscription.change import ChangePurchase
 from app.modules.subscriptions.usecases.purchase_subscription.new import NewPurchase
@@ -43,6 +44,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
         idempotency_repository: PurchaseIdempotencyRepository,
         user_repository: UserRepository,
         config: AppConfig,
+        recurring_closer: RecurringPaymentCloser,
     ) -> None:
         self._subscription_repository = subscription_repository
         self._idempotency = idempotency_repository
@@ -75,6 +77,7 @@ class PurchaseSubscriptionUseCase(UseCase[PurchaseSubscriptionDto, SubscriptionD
             uow,
             event_publisher,
             pricing_repository,
+            recurring_closer,
         )
 
     async def _assert_squads_in_panel(self, data: PurchaseSubscriptionDto) -> None:

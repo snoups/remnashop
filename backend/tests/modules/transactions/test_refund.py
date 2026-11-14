@@ -47,6 +47,7 @@ from app.modules.transactions.events import (
     TransactionRefundedManuallyEvent,
 )
 from app.modules.transactions.gateways.factory import PaymentGatewayFactory
+from app.modules.transactions.recurring_repository import RecurringPaymentRepository
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.transactions.usecases import PreviewRefundUseCase, RefundTransactionUseCase
 from app.modules.users import UserRepository
@@ -696,6 +697,7 @@ async def race(
                     PurchaseIdempotencyRepository(purchase_session),
                     UserRepository(subscriptions.session),
                     AppConfig.get(),
+                    recurring_closer=RecurringPaymentRepository(subscriptions.session),
                 ),
                 purchase_session=purchase_session,
             )

@@ -82,9 +82,9 @@ async def test_admin_sees_stopped_pending_payments_as_attention(
         ListRecurringPaymentsDto(state="attention"), actor_id=0, show_staff=True
     )
     assert total == 1 and items[0].state == "attention"
-    assert items[0].pending_transaction_id == order.id and items[0].next_attempt_at is None
+    assert items[0].pending_transaction_id == order.id and items[0].next_attempt_at is not None
     summary = await repository.summary()
-    assert summary.pending == 1 and summary.attention == 1
+    assert summary.pending == 0 and summary.attention == 1
 
 
 async def test_admin_can_filter_retries_without_exposing_staff_names(case, session, uow):
@@ -237,7 +237,10 @@ async def test_customer_cannot_restart_an_unsafe_payment_from_the_card(case, ses
         )
     state = await case.get_state(case.user, case.subscription.id)
     assert state.enabled and state.paused and not state.available
-    assert state.next_retry_at is None and state.next_payment_at is None
+    if reason == "pending_timeout" and state.payment_pending:
+        assert state.next_retry_at is not None
+    else:
+        assert state.next_retry_at is None and state.next_payment_at is None
     with pytest.raises(ValidationError):
         await case.set_state(
             case.user, SetRecurringPaymentDto(subscription_id=case.subscription.id, enabled=True)

@@ -5,7 +5,7 @@ import httpx
 from dishka import Provider, Scope, alias, provide, provide_all
 
 from app.modules.plans import AnchorAmountRescaler
-from app.modules.subscriptions import OpenOrderCounter, OrderFailer
+from app.modules.subscriptions import OpenOrderCounter, OrderFailer, RecurringPaymentCloser
 from app.modules.transactions.checkout_pricing import CheckoutPricer
 from app.modules.transactions.dispatch import (
     ConfirmStarsPaymentDispatch,
@@ -55,6 +55,7 @@ from app.modules.transactions.usecases import (
 )
 from app.modules.transactions.usecases.get_recurring_terms import GetCheckoutRecurringTermsUseCase
 from app.modules.transactions.usecases.list_recurring_payments import ListRecurringPaymentsUseCase
+from app.modules.transactions.usecases.manage_recurring_payment import ManageRecurringPaymentUseCase
 from app.modules.transactions.waitlist_repository import WaitlistClaims, WaitlistRepository
 
 
@@ -63,6 +64,7 @@ class TransactionsProvider(Provider):
 
     transaction_repository = provide(TransactionRepository)
     recurring_repository = provide(RecurringPaymentRepository)
+    recurring_closer = alias(source=RecurringPaymentRepository, provides=RecurringPaymentCloser)
     recurring_admin_repository = provide(RecurringPaymentAdminRepository)
     transaction_stats_repository = provide(TransactionStatsRepository)
     waitlist_repository = provide(WaitlistRepository)
@@ -75,6 +77,7 @@ class TransactionsProvider(Provider):
         CreateCheckoutUseCase,
         EnqueueRecurringPaymentsUseCase,
         ListRecurringPaymentsUseCase,
+        ManageRecurringPaymentUseCase,
         GetCheckoutRecurringTermsUseCase,
         GetOwnRecurringPaymentUseCase,
         SetOwnRecurringPaymentUseCase,

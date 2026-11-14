@@ -1,6 +1,5 @@
 from datetime import timedelta
 from decimal import Decimal
-from typing import Final
 
 from loguru import logger
 
@@ -15,40 +14,15 @@ from app.modules.gateways import GatewayRepository
 from app.modules.subscriptions import SubscriptionRepository, get_owned_target
 from app.modules.transactions.recurring_dto import RecurringPaymentState, SetRecurringPaymentDto
 from app.modules.transactions.recurring_policy import (
-    ATTENTION_REASONS,
-    PERMANENT_CANCELLATION_REASONS,
+    RecurringState,
+    RetryKind,
+    classify,
+    recurring_reason,
 )
 from app.modules.transactions.recurring_repository import RecurringPaymentRepository
 from app.modules.transactions.recurring_terms import build_recurring_terms
 from app.modules.transactions.repository import TransactionRepository
 from app.modules.users import UserDto
-
-_PAUSED_REASONS: Final[frozenset[str]] = frozenset(
-    {
-        "price_changed",
-        "subscription_changed",
-        "shop_changed",
-        "consent_required",
-        "plan_unavailable",
-        "customer_email_required",
-        "gateway_disabled",
-        "merchant_unavailable",
-        "subscription_unavailable",
-    }
-)
-_RECHECK_REASONS: Final[frozenset[str]] = frozenset(
-    {
-        "provider_unavailable",
-        "merchant_unavailable",
-        "provider_rejected",
-        "issuer_unavailable",
-        "payment_method_unavailable",
-        "gateway_disabled",
-    }
-)
-_BLOCKED_REASONS: Final[frozenset[str]] = (
-    ATTENTION_REASONS | PERMANENT_CANCELLATION_REASONS | {"retries_exhausted"}
-)
 
 
 class GetOwnRecurringPaymentUseCase(UseCase[int, RecurringPaymentState, UserDto]):
@@ -81,6 +55,7 @@ class GetOwnRecurringPaymentUseCase(UseCase[int, RecurringPaymentState, UserDto]
                 if mandate and mandate.source_transaction_id is not None
                 else None
             )
+        reason = recurring_reason(mandate.last_error) if mandate else None
         available = bool(
             mandate
             and mandate.payment_method_id
@@ -95,31 +70,40 @@ class GetOwnRecurringPaymentUseCase(UseCase[int, RecurringPaymentState, UserDto]
             and source.status is TransactionStatus.PAID
             and source.duration_days > 0
             and source.base_price > 0
-            and mandate.last_error not in _BLOCKED_REASONS
+            and not (reason and reason.policy.block_enable)
+            and not (mandate.submitted_at and mandate.pending_transaction_id is None)
             and source.plan_snapshot.terms_differ(subscription.plan_snapshot) is False
         )
         async with self._uow:
             authorized = (
                 await self._recurring.consent_terms(mandate.consent_id) if mandate else None
             )
+        state = classify(mandate) if mandate else RecurringState.DISABLED
         enabled = bool(mandate and mandate.enabled)
-        hard_pause = bool(enabled and mandate and mandate.last_error in _PAUSED_REASONS)
-        available = bool(available and not hard_pause and (authorized or not enabled))
+        available = bool(available and (authorized or not enabled))
         paused = bool(
             mandate
             and not mandate.customer_disabled
-            and (mandate.last_error in _BLOCKED_REASONS or (enabled and not available))
+            and (state is RecurringState.ATTENTION or enabled and not available)
         )
-        retrying = bool(enabled and available and mandate and mandate.first_failure_at)
+        retrying = state is RecurringState.RETRYING and available
         payment_pending = bool(mandate and mandate.pending_transaction_id is not None)
+        recheck = bool(
+            reason
+            and (
+                reason.policy.retry is RetryKind.TECHNICAL
+                or reason.policy.retry is RetryKind.POLL
+                and payment_pending
+            )
+        )
         next_retry_at = (
             mandate.next_attempt_at
             if mandate
-            and (retrying or enabled and mandate.last_error in _RECHECK_REASONS)
-            and mandate.last_error not in _BLOCKED_REASONS
+            and not mandate.customer_disabled
+            and (retrying or payment_pending or recheck)
             else None
         )
-        next_payment_at = next_retry_at
+        next_payment_at = next_retry_at if retrying and available else None
         if enabled and available and authorized and next_payment_at is None and not payment_pending:
             next_payment_at = subscription.expire_at - timedelta(minutes=authorized.lead_minutes)
         terms = (
@@ -143,6 +127,7 @@ class GetOwnRecurringPaymentUseCase(UseCase[int, RecurringPaymentState, UserDto]
             terms=terms,
             accepted_terms=authorized,
             enabled=enabled,
+            can_disable=bool(mandate and not mandate.customer_disabled and authorized),
             available=available,
             customer_disabled=bool(mandate and mandate.customer_disabled),
             paused=paused,
@@ -191,6 +176,12 @@ class SetOwnRecurringPaymentUseCase(
             await self._recurring.get(data.subscription_id, for_update=True)
             consent_id = None
             if data.enabled and state.terms is not None:
+                await self._recurring.revoke_consent(
+                    data.subscription_id,
+                    channel=data.channel,
+                    event_id=data.event_id,
+                    ip_address=data.client_ip,
+                )
                 consent_id = await self._recurring.record_consent(
                     state.terms,
                     channel=data.channel,

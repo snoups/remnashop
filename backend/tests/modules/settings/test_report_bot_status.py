@@ -33,5 +33,9 @@ async def test_started_and_stopped_are_always_reported(
     await use_case.system(ReportBotStatusDto(kind=BotStatusKind.STARTED, detail="shop_bot"))
     await use_case.system(ReportBotStatusDto(kind=BotStatusKind.STOPPED))
 
-    rows = (await session.execute(select(EventOutboxEntry.event_type))).scalars().all()
+    rows = (
+        (await session.execute(select(EventOutboxEntry.event_type).order_by(EventOutboxEntry.id)))
+        .scalars()
+        .all()
+    )
     assert list(rows) == ["BotStartedEvent", "BotStoppedEvent"]

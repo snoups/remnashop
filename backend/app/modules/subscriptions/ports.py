@@ -26,3 +26,7 @@ class OpenOrderCounter(Protocol):
     async def count_open_new_orders(
         self, user_id: int, now: datetime, *, exclude_key: Optional[str] = None
     ) -> int: ...
+
+
+class RecurringPaymentCloser(Protocol):
+    async def close_for_plan_change(self, subscription_id: int) -> None: ...

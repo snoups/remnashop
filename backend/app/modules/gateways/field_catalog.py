@@ -94,8 +94,6 @@ def gateway_flags(gateway_type: PaymentGatewayType, values: dict[str, str]) -> d
 
 def validate_gateway_field_keys(gateway_type: PaymentGatewayType, values: dict[str, str]) -> None:
     valid_keys = {field_spec.key for field_spec in GATEWAY_FIELD_CATALOG[gateway_type]}
-    if gateway_type is PaymentGatewayType.YOOKASSA:
-        valid_keys.add("recurring_enabled")  # Older clients can still send the legacy switch.
     unknown = set(values) - valid_keys
     if unknown:
         raise ValidationError(
@@ -115,12 +113,6 @@ def validate_gateway_field_values(gateway_type: PaymentGatewayType, values: dict
                 code=ErrorCode.GATEWAY_CURRENCY_INVALID,
             )
 
-    if gateway_type is PaymentGatewayType.YOOKASSA and "recurring_enabled" in values:
-        if values["recurring_enabled"] not in _BOOLEAN_VALUES:
-            raise ValidationError(
-                "recurring_enabled must be 'true' or 'false'",
-                code=ErrorCode.GATEWAY_FIELD_NOT_BOOLEAN,
-            )
     for field_spec in GATEWAY_FIELD_CATALOG[gateway_type]:
         _validate_field_value(gateway_type, field_spec, values.get(field_spec.key))
 

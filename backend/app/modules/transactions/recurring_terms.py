@@ -8,7 +8,7 @@ from app.core.config import AppConfig
 from app.core.enums import Currency, Locale, PurchaseType
 from app.modules.transactions.recurring_policy import RETRY_OFFSETS_HOURS
 
-TERMS_VERSION: Final[str] = "2"
+TERMS_VERSION: Final[str] = "1"
 
 
 class RecurringTerms(BaseModel):
@@ -24,9 +24,8 @@ class RecurringTerms(BaseModel):
     duration_days: int
     lead_minutes: int
     retry_minutes: int
-    # Missing on older accepted revisions: never widen their retry authorization implicitly.
-    retry_offsets_hours: tuple[int, ...] = ()
-    pending_timeout_hours: int = 24
+    retry_offsets_hours: tuple[int, ...]
+    pending_timeout_hours: int
     max_overdue_hours: int
     locale: Locale
     summary: str
@@ -34,7 +33,6 @@ class RecurringTerms(BaseModel):
 
     def covers(
         self,
-        config: AppConfig,
         *,
         user_id: int,
         plan_id: int,
@@ -68,12 +66,13 @@ def build_recurring_terms(
     amount = format(amount_limit.normalize(), "f")
     initial = format(initial_amount.normalize(), "f")
     retry_hours = ", ".join(str(hour) for hour in RETRY_OFFSETS_HOURS)
+    lead_minutes = min(policy.lead_minutes, duration_days * 24 * 60 // 2)
     if locale.value == "ru":
         summary = (
             "По вашему согласию — сохранение способа оплаты в ЮKassa и автоматические "
             f"списания до {amount} {currency.symbol} за каждые "
-            f"{duration_days} дней, начиная за {policy.lead_minutes} мин. до окончания подписки. "
-            "Отключить будущие списания можно в настройках подписки в боте или личном кабинете."
+            f"{duration_days} дней, начиная за {lead_minutes} мин. до окончания подписки. "
+            "Отключить будущие списания можно в настройках подписки в боте."
         )
         text = (
             "Условия автоматического продления\n\n"
@@ -81,7 +80,7 @@ def build_recurring_terms(
             f"Продление: не более {amount} {currency.symbol} за каждые {duration_days} дней. "
             "Разовая скидка на будущие продления не распространяется. Если стоимость "
             "превысит указанный предел или изменятся условия тарифа, автосписания остановятся.\n\n"
-            f"Попытка оплаты начинается за {policy.lead_minutes} мин. до окончания "
+            f"Попытка оплаты начинается за {lead_minutes} мин. до окончания "
             "оплаченного периода. После отказа банка возможны повторные списания через "
             f"{retry_hours} ч. от первого отказа, в пределах указанного окна. "
             "При временном сбое запрос может повторяться с интервалом "
@@ -92,7 +91,7 @@ def build_recurring_terms(
             "использовать его для автоматической оплаты этой подписки без отдельного "
             "подтверждения каждого списания.\n\n"
             "Отозвать согласие и запретить дальнейшие списания можно кнопкой "
-            "«Отключить автопродление» в настройках подписки в боте или личном кабинете. "
+            "«Отключить автопродление» в настройках подписки в боте. "
             "Отказ прекращает новые попытки списания; уже отправленный платёж может "
             "завершиться. Оплаченный срок сохраняется. Повторное подключение требует "
             "нового явного согласия."
@@ -102,8 +101,8 @@ def build_recurring_terms(
             "With your consent, auto-renewal saves your payment method with YooKassa "
             "and authorizes "
             f"automatic charges up to {amount} {currency.value} every {duration_days} days, "
-            f"starting {policy.lead_minutes} min. before expiry. Stop future charges "
-            "in your subscription settings in the bot or customer account."
+            f"starting {lead_minutes} min. before expiry. Stop future charges "
+            "in your subscription settings in the bot."
         )
         text = (
             "Automatic renewal terms\n\n"
@@ -111,7 +110,7 @@ def build_recurring_terms(
             f"Renewals: up to {amount} {currency.value} every {duration_days} days. "
             "One-time discounts do not apply to renewals. Charges stop if the price exceeds "
             "this limit or the plan terms change.\n\n"
-            f"Payment starts {policy.lead_minutes} min. before the paid period expires. "
+            f"Payment starts {lead_minutes} min. before the paid period expires. "
             f"A bank decline may be retried at {retry_hours} hours from the first failure, "
             "within the agreed window. "
             f"A temporary failure may be retried every {policy.retry_minutes} min.; "
@@ -120,7 +119,7 @@ def build_recurring_terms(
             "By consenting, you authorize saving your payment method through YooKassa "
             "and using it to renew this subscription without confirming each charge.\n\n"
             "Withdraw consent and stop future charges with Disable auto-renewal in your "
-            "subscription settings in the bot or customer account. Withdrawal stops new "
+            "subscription settings in the bot. Withdrawal stops new "
             "attempts; a payment already submitted may complete. Your paid period remains "
             "available. Reconnection requires fresh explicit consent."
         )
@@ -135,7 +134,7 @@ def build_recurring_terms(
         amount_limit=Decimal(format(amount_limit.normalize(), "f")),
         currency=currency,
         duration_days=duration_days,
-        lead_minutes=policy.lead_minutes,
+        lead_minutes=lead_minutes,
         retry_minutes=policy.retry_minutes,
         max_overdue_hours=policy.max_overdue_hours,
         retry_offsets_hours=RETRY_OFFSETS_HOURS,

@@ -899,7 +899,8 @@
       "RecurringPaymentUpcomingEvent": "Upcoming recurring payment",
       "RecurringPaymentFailedEvent": "Recurring payment failed",
       "RecurringPaymentPausedEvent": "Auto-renewal paused",
-      "RecurringPaymentExhaustedEvent": "Recurring payment retries exhausted"
+      "RecurringPaymentExhaustedEvent": "Recurring payment retries exhausted",
+      "RecurringPaymentManagedEvent": "Recurring payment managed"
     },
     "eventVariants": {
       "CabinetUserRegisteredEvent": {
@@ -2424,7 +2425,8 @@
     "BOT_REQUIREMENTS_VIEW": "View bot requirements",
     "BOT_REQUIREMENTS_MANAGE": "Edit bot requirements",
     "PAYMENT_WAITLIST_VIEW": "View the payment waitlist",
-    "TRANSACTIONS_RECURRING_VIEW": "View recurring payments and their statistics"
+    "TRANSACTIONS_RECURRING_VIEW": "View recurring payments and their statistics",
+    "TRANSACTIONS_RECURRING_MANAGE": "Manage recurring payments"
   },
   "permissionCategories": {
     "botSettings": "Telegram bot",
@@ -3685,29 +3687,44 @@
         "revenue": "Recurring revenue"
       },
       "reasons": {
-        "insufficient_funds": "Insufficient funds",
+        "customer_disabled": "Auto-renewal was disabled by the customer",
         "bank_declined": "The bank declined the payment",
+        "insufficient_funds": "Insufficient funds",
         "issuer_unavailable": "The issuing bank is temporarily unavailable",
-        "merchant_unavailable": "Shop authentication is unavailable",
-        "provider_auth_error": "Shop authentication failed",
-        "provider_unavailable": "The payment service is temporarily unavailable",
-        "provider_rejected": "The payment service rejected the request",
         "payment_method_unavailable": "The payment method is temporarily unavailable",
-        "payment_method_revoked": "The payment method was revoked",
-        "permission_revoked": "Authorization for charges was revoked",
-        "payment_method_restricted": "The payment method is restricted",
-        "price_changed": "Price exceeds the agreed limit",
-        "subscription_changed": "Subscription terms changed",
-        "shop_changed": "YooKassa shop changed",
-        "consent_required": "Renewal terms require confirmation",
-        "payment_status_unknown": "Payment outcome is unknown",
-        "pending_timeout": "Payment confirmation is taking too long",
-        "retries_exhausted": "Payment retries exhausted",
-        "customer_disabled": "Disabled by the customer",
-        "manual_payment": "Disabled after manual payment"
+        "provider_unavailable": "The payment provider is unavailable",
+        "merchant_unavailable": "The shop cannot process payments",
+        "provider_configuration_error": "The payment or receipt configuration requires correction",
+        "provider_rejected": "The payment provider rejected the request",
+        "permission_revoked": "The payment provider mandate was revoked",
+        "payment_method_restricted": "The saved payment method is no longer valid",
+        "card_expired": "The card has expired",
+        "fraud_suspected": "The bank blocked the payment",
+        "price_changed": "The price exceeds the agreed limit",
+        "subscription_changed": "The subscription terms changed",
+        "shop_changed": "The payment shop changed",
+        "consent_required": "Consent to renewal terms is required",
+        "plan_unavailable": "The plan is not available for purchase",
+        "customer_email_required": "An email address is required for the receipt",
+        "gateway_disabled": "The shop disabled recurring payments",
+        "subscription_unavailable": "The subscription cannot be renewed",
+        "payment_status_unknown": "The previous payment outcome is unknown",
+        "pending_timeout": "The payment has been pending too long",
+        "retries_exhausted": "Payment retries were exhausted",
+        "payment_method_not_saved": "The payment provider did not save the payment method",
+        "renewal_window_expired": "The agreed renewal retry window expired",
+        "admin_closed": "Payment waiting was closed by an administrator"
       },
       "search": "Search",
-      "searchPlaceholder": "Customer or subscription ID"
+      "searchPlaceholder": "Customer or subscription ID",
+      "actions": {
+        "check": "Check with YooKassa",
+        "close": "Close waiting",
+        "retry": "Retry after correction",
+        "done": "Action completed",
+        "closeTitle": "Close payment waiting?",
+        "closeMessage": "Waiting will close and the existing renewal consent will be withdrawn. A payment already sent to YooKassa may still complete and renew the subscription. Future charges require fresh customer consent."
+      }
     }
   },
   "subscriptions": {

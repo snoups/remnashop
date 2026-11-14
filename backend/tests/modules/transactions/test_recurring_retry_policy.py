@@ -1,28 +1,49 @@
-from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
-from app.modules.transactions.recurring_policy import RETRY_OFFSETS_HOURS, retry_at
-
-_FIRST_FAILURE = datetime(2026, 11, 14, 9, 17, 23, tzinfo=timezone.utc)
-
-
-def test_bank_retry_schedule_is_anchored_to_the_first_failure() -> None:
-    # These are absolute offsets, not increasing delays after each failed retry.
-    expected = (1, 3, 6, 12, 24, 36, 48, 72)
-    assert RETRY_OFFSETS_HOURS == expected
-    scheduled = tuple(retry_at(_FIRST_FAILURE, index) for index in range(8))
-    assert scheduled == tuple(_FIRST_FAILURE + timedelta(hours=hour) for hour in expected)
+from app.core.utils.time import datetime_now
+from app.modules.transactions.recurring_policy import (
+    RETRY_OFFSETS_HOURS,
+    RecurringReason,
+    RecurringState,
+    classify,
+)
 
 
-@pytest.mark.parametrize("retry_count", [-1, 8, 9, 1000])
-def test_a_retry_outside_the_schedule_is_not_created(retry_count: int) -> None:
-    assert retry_at(_FIRST_FAILURE, retry_count) is None
+@pytest.mark.parametrize("reason", list(RecurringReason))
+def test_every_reason_has_an_explicit_notification_policy_and_both_translations(reason):
+    assets = Path(__file__).parents[3] / "assets" / "translations"
+    for locale in ("ru", "en"):
+        assert f"[{reason.value}]" in (assets / locale / "notifications.ftl").read_text()
+    assert isinstance(reason.policy.customer_notice, bool)
 
 
-def test_retries_keep_the_original_timezone_and_cross_date_boundaries() -> None:
-    first_failure = datetime(2026, 11, 14, 23, 45, tzinfo=timezone(timedelta(hours=3)))
-    scheduled = retry_at(first_failure, 7)
-    assert scheduled is not None
-    assert scheduled == datetime(2026, 11, 17, 23, 45, tzinfo=first_failure.tzinfo)
-    assert scheduled.tzinfo is first_failure.tzinfo
+@pytest.mark.parametrize(
+    ("enabled", "customer_disabled", "pending", "failed", "reason", "expected"),
+    [
+        (True, False, None, None, None, RecurringState.ENABLED),
+        (True, False, 1, None, None, RecurringState.PENDING),
+        (True, False, None, datetime_now(), "insufficient_funds", RecurringState.RETRYING),
+        (False, False, None, None, "payment_status_unknown", RecurringState.ATTENTION),
+        (True, False, 1, None, "pending_timeout", RecurringState.ATTENTION),
+        (False, True, 1, None, "customer_disabled", RecurringState.DISABLED),
+    ],
+)
+def test_mandate_state_follows_one_ordered_policy(
+    enabled, customer_disabled, pending, failed, reason, expected
+):
+    mandate = SimpleNamespace(
+        enabled=enabled,
+        customer_disabled=customer_disabled,
+        pending_transaction_id=pending,
+        first_failure_at=failed,
+        last_error=reason,
+        submitted_at=None,
+    )
+    assert classify(mandate) is expected
+
+
+def test_bank_retry_schedule_has_the_agreed_absolute_offsets():
+    assert RETRY_OFFSETS_HOURS == (1, 3, 6, 12, 24, 36, 48, 72)

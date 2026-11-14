@@ -8,7 +8,6 @@ from sqlalchemy import select, update
 
 from app.core.db.models import RecurringPayment, Subscription, Transaction
 from app.core.enums import Currency, PaymentGatewayType, PurchaseType, TransactionStatus
-from app.core.exceptions import ValidationError
 from app.core.utils.time import datetime_now
 from app.modules.transactions.dto import CreateTransactionDto, HandleWebhookDto, WebhookRequest
 from app.modules.transactions.recurring_dto import SetRecurringPaymentDto
@@ -99,37 +98,15 @@ async def test_merchant_credentials_failure_keeps_authorization_and_bank_retry_b
     assert case.provider.posts[1].headers["Idempotence-Key"] != first_key
 
 
-async def test_first_provider_refusal_is_rechecked_quietly_before_bank_backoff(
-    case,
-    session,
-    uow,
-):
+async def test_request_configuration_error_never_consumes_bank_retries(case, uow):
     case.provider.reject = True
-    case.provider.reject_code = 400
     await case.worker.system()
     initial = await case.repository.get(case.subscription.id)
     assert initial.enabled and initial.retry_count == 0
-    assert initial.pending_transaction_id is None
-    assert initial.first_failure_at is not None
-    first = initial.first_failure_at
+    assert initial.pending_transaction_id is None and initial.first_failure_at is None
+    assert initial.last_error == "provider_configuration_error"
     await _tick_again(case, uow)
     assert len(case.provider.posts) == 1
-    async with uow:
-        await session.execute(
-            update(RecurringPayment)
-            .where(RecurringPayment.subscription_id == case.subscription.id)
-            .values(
-                first_failure_at=datetime_now() - timedelta(minutes=6),
-                bank_retry_at=datetime_now() - timedelta(minutes=1),
-                next_attempt_at=datetime_now() - timedelta(seconds=1),
-            )
-        )
-    await case.worker.system()
-    after = await case.repository.get(case.subscription.id)
-    assert len(case.provider.posts) == 2
-    assert after.retry_count == 1 and after.enabled
-    assert after.next_attempt_at == after.first_failure_at + timedelta(hours=1)
-    assert after.first_failure_at < first
 
 
 async def test_bank_decline_schedules_a_retry_without_switching_off_the_customer_preference(
@@ -245,11 +222,14 @@ async def test_a_long_pending_payment_is_parked_without_releasing_the_debit_lock
     assert parked.last_error == "pending_timeout"
     assert parked.enabled and parked.pending_transaction_id == initial.pending_transaction_id
     count = len(case.provider.requests)
-    future = datetime_now() + timedelta(days=7)
+    future = datetime_now() + timedelta(minutes=5)
     assert case.subscription.id not in await case.repository.list_due(
         future, due_before=future, limit=100
     )
-    await case.worker.system(case.subscription.id)
+    later = datetime_now() + timedelta(hours=2)
+    assert case.subscription.id in await case.repository.list_due(
+        later, due_before=later, limit=100
+    )
     assert len(case.provider.requests) == count
     assert len(case.provider.posts) == 1
 
@@ -292,7 +272,7 @@ async def test_manual_stars_renewal_keeps_authorization_and_supersedes_an_unsent
     original = await case.repository.get(case.subscription.id)
     await case.worker._reserve(original)
     reserved = await case.repository.get(case.subscription.id)
-    assert reserved.pending_transaction_id is not None and reserved.attempted_at is None
+    assert reserved.pending_transaction_id is not None and reserved.submitted_at is None
     await _manual_stars_renewal(case, transaction_repository, session, uow)
     await _tick_again(case, uow)
     after = await case.repository.get(case.subscription.id)
@@ -353,7 +333,7 @@ async def test_runtime_window_increase_does_not_widen_the_accepted_limit(
     await case.worker.system()
     assert not case.provider.posts
     after = await case.repository.get(case.subscription.id)
-    assert after.enabled and after.last_error == "subscription_changed"
+    assert not after.enabled and after.last_error == "renewal_window_expired"
 
 
 async def test_auth_failure_after_a_lost_create_keeps_the_original_key_and_attempt(
@@ -467,7 +447,6 @@ async def test_switching_off_and_on_cannot_erase_a_pending_timeout(
     session,
     uow,
 ):
-    initial_state = await case.get_state(case.user, case.subscription.id)
     case.provider.status = "pending"
     await case.worker.system()
     original = await case.repository.get(case.subscription.id)
@@ -482,86 +461,19 @@ async def test_switching_off_and_on_cannot_erase_a_pending_timeout(
     disabled = await case.set_state(
         case.user, SetRecurringPaymentDto(subscription_id=case.subscription.id, enabled=False)
     )
-    assert disabled.customer_disabled and not disabled.enabled and not disabled.available
-    assert disabled.last_error == "pending_timeout"
-    with pytest.raises(ValidationError):
-        await case.set_state(
-            case.user,
-            SetRecurringPaymentDto(
-                subscription_id=case.subscription.id,
-                enabled=True,
-                terms_id=initial_state.terms.terms_id,
-            ),
-        )
-    after = await case.repository.get(case.subscription.id)
-    assert after.pending_transaction_id == original.pending_transaction_id
-    assert after.last_error == "pending_timeout"
-    assert len(case.provider.posts) == 1
-
-
-async def test_legacy_ambiguous_attempt_is_not_reposted_after_manual_renewal(
-    case,
-    transaction_repository,
-    session,
-    uow,
-):
-    case.provider.lose_response = True
-    await case.worker.system()
-    original = await case.repository.get(case.subscription.id)
-    async with uow:
-        await session.execute(
-            update(RecurringPayment)
-            .where(RecurringPayment.subscription_id == case.subscription.id)
-            .values(cycle_expire_at=None)
-        )
-    await _manual_stars_renewal(case, transaction_repository, session, uow)
-    await _tick_again(case, uow)
-    assert len(case.provider.posts) == 1
-    after = await case.repository.get(case.subscription.id)
-    assert after.enabled and after.consent_id == original.consent_id
-    assert after.pending_transaction_id == original.pending_transaction_id
-
-
-@pytest.mark.parametrize("reserved", [False, True])
-async def test_paid_manual_renewal_waiting_for_fulfillment_prevents_an_auto_debit(
-    case,
-    transaction_repository,
-    session,
-    uow,
-    reserved,
-):
-    if reserved:
-        await case.worker._reserve(await case.repository.get(case.subscription.id))
-    values = {
-        field.name: getattr(case.source, field.name) for field in fields(CreateTransactionDto)
-    }
-    values.update(
-        idempotency_key="paid-manual-waiting-" + str(case.source.id),
-        gateway_type=PaymentGatewayType.TELEGRAM_STARS,
-        currency=Currency.XTR,
-        purchase_type=PurchaseType.RENEW,
-        target_subscription_id=case.subscription.id,
-        recurring_consent_id=None,
-        recurring_consent=False,
+    assert disabled.customer_disabled and not disabled.enabled and disabled.available
+    assert disabled.last_error == "customer_disabled"
+    await case.set_state(
+        case.user,
+        SetRecurringPaymentDto(
+            subscription_id=case.subscription.id,
+            enabled=True,
+            terms_id=disabled.terms.terms_id,
+        ),
     )
-    async with uow:
-        order = await transaction_repository.create(CreateTransactionDto(**values))
-        await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
-    await case.worker.system()
-    assert not case.provider.posts
-    before = await case.repository.get(case.subscription.id)
-    assert before.enabled and before.attempted_at is None
-    async with uow:
-        await session.execute(
-            update(Subscription)
-            .where(Subscription.id == case.subscription.id)
-            .values(expire_at=datetime_now() + timedelta(days=30))
-        )
-        await transaction_repository.mark_fulfilled(order.id, case.subscription.id)
-    await case.worker.system()
     after = await case.repository.get(case.subscription.id)
-    assert after.enabled and after.pending_transaction_id is None
-    assert not case.provider.posts
+    assert after.pending_transaction_id == original.pending_transaction_id
+    assert len(case.provider.posts) == 1
 
 
 async def test_late_verified_success_resumes_the_original_authorization_without_a_new_charge(
@@ -617,3 +529,45 @@ async def test_late_verified_success_resumes_the_original_authorization_without_
     assert restored.enabled and restored.last_error is None
     assert restored.consent_id == grant_id and restored.pending_transaction_id is None
     assert len(case.provider.posts) == 1
+
+
+@pytest.mark.parametrize("reserved", [False, True])
+async def test_paid_manual_renewal_waiting_for_fulfillment_prevents_an_auto_debit(
+    case,
+    transaction_repository,
+    session,
+    uow,
+    reserved,
+):
+    if reserved:
+        await case.worker._reserve(await case.repository.get(case.subscription.id))
+    values = {
+        field.name: getattr(case.source, field.name) for field in fields(CreateTransactionDto)
+    }
+    values.update(
+        idempotency_key="paid-manual-waiting-" + str(case.source.id),
+        gateway_type=PaymentGatewayType.TELEGRAM_STARS,
+        currency=Currency.XTR,
+        purchase_type=PurchaseType.RENEW,
+        target_subscription_id=case.subscription.id,
+        recurring_consent_id=None,
+        recurring_consent=False,
+    )
+    async with uow:
+        order = await transaction_repository.create(CreateTransactionDto(**values))
+        await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
+    await case.worker.system()
+    assert not case.provider.posts
+    before = await case.repository.get(case.subscription.id)
+    assert before.enabled and before.submitted_at is None
+    async with uow:
+        await session.execute(
+            update(Subscription)
+            .where(Subscription.id == case.subscription.id)
+            .values(expire_at=datetime_now() + timedelta(days=30))
+        )
+        await transaction_repository.mark_fulfilled(order.id, case.subscription.id)
+    await case.worker.system()
+    after = await case.repository.get(case.subscription.id)
+    assert after.enabled and after.pending_transaction_id is None
+    assert not case.provider.posts

@@ -1,4 +1,4 @@
-import { apiGet } from "@shared/api/http";
+import { apiGet, apiPost } from "@shared/api/http";
 
 export type RecurringState = "enabled" | "disabled" | "pending" | "retrying" | "attention";
 
@@ -12,8 +12,12 @@ export interface RecurringPaymentItem {
   state: RecurringState;
   last_error: string | null;
   next_attempt_at: string | null;
-  attempted_at: string | null;
+  submitted_at: string | null;
   pending_transaction_id: number | null;
+  external_payment_id: string | null;
+  can_check: boolean;
+  can_close: boolean;
+  can_retry: boolean;
   retry_count: number;
   first_failure_at: string | null;
   amount_limit: string | null;
@@ -47,4 +51,13 @@ export function listRecurringPayments(state: string, page: number, search: strin
   if (state) query.set("state", state);
   if (search) query.set("search", search);
   return apiGet<RecurringPaymentPage>(`/transactions/recurring?${query.toString()}`, signal);
+}
+
+export type RecurringAction = "check" | "close" | "retry";
+
+export function manageRecurringPayment(subscriptionId: number, action: RecurringAction, expectedPendingId: number | null): Promise<void> {
+  return apiPost<void, { expected_pending_transaction_id: number | null }>(
+    `/transactions/recurring/${subscriptionId}/actions/${action}`,
+    { expected_pending_transaction_id: expectedPendingId },
+  );
 }

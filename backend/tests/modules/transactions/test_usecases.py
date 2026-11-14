@@ -252,7 +252,7 @@ async def test_yookassa_checkout_never_infers_customer_consent_from_shop_setting
 ) -> None:
     async with uow:
         await gateway_repository.update_settings(
-            PaymentGatewayType.YOOKASSA, {"recurring_enabled": str(enabled).lower()}
+            PaymentGatewayType.YOOKASSA, {"payment_mode": "both" if enabled else "single"}
         )
     await create_checkout_use_case(
         actor,

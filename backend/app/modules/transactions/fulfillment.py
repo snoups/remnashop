@@ -1,11 +1,12 @@
 from functools import partial
 
 from app.core.db.uow import UnitOfWork
-from app.core.enums import TransactionStatus
+from app.core.enums import DiscountSource, TransactionStatus
 from app.modules.subscriptions import PurchaseSubscriptionDispatch
 from app.modules.transactions.dto import TransactionDto
 from app.modules.transactions.gateways.base import ProviderPayment
 from app.modules.transactions.repository import TransactionRepository
+from app.modules.transactions.unpaid_orders import UNPAID_FINAL
 
 
 async def settle_verified_payment(
@@ -15,11 +16,19 @@ async def settle_verified_payment(
     uow: UnitOfWork,
     dispatch: PurchaseSubscriptionDispatch,
 ) -> bool:
+    if order.status is TransactionStatus.PAID:
+        return False
     async with uow:
+        current = await repository.get_by_id_for_update(order.id)
+        if current.status not in UNPAID_FINAL | {TransactionStatus.PENDING}:
+            return False
+        if current.status in UNPAID_FINAL and current.discount_source is DiscountSource.PURCHASE:
+            # Cancellation returns this one-shot discount; a late settlement cannot spend it twice.
+            return False
         moved = await repository.mark_status_if(
             order.id,
             TransactionStatus.PAID,
-            current=frozenset({order.status}),
+            current=frozenset({current.status}),
             external_payment_id=payment.provider_payment_id or order.external_payment_id,
         )
         if not moved:
@@ -28,7 +37,7 @@ async def settle_verified_payment(
             order.id, payment.saved_payment_method_id, payment.payment_method_shop_id
         )
         if not order.is_test:
-            await uow.after_commit(partial(dispatch_fulfillment, dispatch, order))
+            await uow.after_commit(partial(dispatch_fulfillment, dispatch, current))
     return True
 
 

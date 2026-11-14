@@ -45,6 +45,7 @@ from app.modules.subscriptions.idempotency_repository import PurchaseIdempotency
 from app.modules.subscriptions.lifecycle import SubscriptionLifecycleService
 from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.usecases import GrantAddOnUseCase, PurchaseSubscriptionUseCase
+from app.modules.transactions.recurring_repository import RecurringPaymentRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave import FakeUserStore
@@ -94,6 +95,7 @@ async def _create_subscription(
         PurchaseIdempotencyRepository(subscription_repository.session),
         UserRepository(subscription_repository.session),
         AppConfig.get(),
+        recurring_closer=RecurringPaymentRepository(subscription_repository.session),
     )
     subscription = await use_case(
         buyer,

@@ -652,3 +652,5 @@ frg-subscription-recurring-next-retry = Следующая попытка опл
 frg-subscription-recurring-next-check = Следующая проверка платежа: { $when } UTC.
 
 frg-purchase-recurring-preserved = Разовая оплата не отменяет ранее подключённое автопродление. Отключить его можно в настройках подписки.
+
+frg-purchase-recurring-plan-change = При смене тарифа автопродление прежней подписки отключается. Для нового тарифа требуется отдельное согласие.

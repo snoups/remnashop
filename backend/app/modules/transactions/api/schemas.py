@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.core.constants import INT32_MAX
 from app.core.enums import (
     Currency,
     DiscountSource,
@@ -243,3 +244,7 @@ class PaymentMethodListResponse(BaseModel):
 class SetRecurringPaymentRequest(BaseModel):
     enabled: bool
     terms_id: Optional[str] = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+
+
+class ManageRecurringPaymentRequest(BaseModel):
+    expected_pending_transaction_id: Optional[int] = Field(default=None, ge=1, le=INT32_MAX)

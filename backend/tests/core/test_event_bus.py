@@ -67,6 +67,7 @@ from app.modules.subscriptions.events import (
 )
 from app.modules.transactions.events import (
     PaidOrderNotFulfilledEvent,
+    RecurringPaymentManagedEvent,
     TransactionCanceledEvent,
     TransactionExpiredEvent,
     TransactionPartiallyRefundedEvent,
@@ -145,6 +146,14 @@ _REGISTERED_EVENTS: dict[str, BaseEvent] = {
         ),
         RecurringPaymentPausedEvent(user_id=1, subscription_id=1, reason="merchant_unavailable"),
         RecurringPaymentExhaustedEvent(user_id=1, subscription_id=1, reason="retries_exhausted"),
+        RecurringPaymentManagedEvent(
+            actor=_USER,
+            target=_TARGET,
+            subscription_id=1,
+            action="check",
+            order_id=1,
+            previous_reason="pending_timeout",
+        ),
         TransactionCanceledEvent(order_id=1, user_id=1),
         TransactionExpiredEvent(order_id=1, user_id=1),
         SubscriptionExpiringEvent(user=_USER, subscription_id=1, hours=72),

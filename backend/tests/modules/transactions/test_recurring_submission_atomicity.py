@@ -19,7 +19,6 @@ async def _prepare(case):
     await case.worker._reserve(mandate)
     context = await case.worker._pending_context(case.subscription.id)
     assert context is not None
-    assert context[3] is not None
     return context
 
 
@@ -27,15 +26,13 @@ async def _prepare(case):
 async def test_submission_persists_the_outcome_before_releasing_authorization(
     case, transaction_repository, code
 ):
-    mandate, order, _, token = await _prepare(case)
+    _, order, _ = await _prepare(case)
     case.provider.reject = code != 200
     case.provider.reject_code = code
 
     result = await case.worker._submit_if_authorized(
         case.subscription.id,
         order,
-        first_attempt=mandate.attempted_at is None,
-        attempt_token=token,
     )
 
     assert result is not None
@@ -56,8 +53,6 @@ async def test_submission_persists_the_outcome_before_releasing_authorization(
     replay = await case.worker._submit_if_authorized(
         case.subscription.id,
         order,
-        first_attempt=True,
-        attempt_token=token,
     )
 
     assert replay is None
@@ -71,23 +66,21 @@ async def test_submission_persists_the_outcome_before_releasing_authorization(
 async def test_delayed_first_preparation_cannot_retire_a_later_ambiguous_submission(
     case, transaction_repository, code
 ):
-    initial, order, _, initial_token = await _prepare(case)
+    initial, order, _ = await _prepare(case)
     later = await case.worker._pending_context(case.subscription.id)
     assert later is not None
-    retry, retry_order, _, retry_token = later
-    assert initial.attempted_at is None
-    assert retry.attempted_at is not None
-    assert initial_token < retry_token
+    retry, retry_order, _ = later
+    assert initial.submitted_at is None and retry.submitted_at is None
     case.provider.lose_response = True
 
     with pytest.raises(httpx.ReadTimeout):
         await case.worker._submit_if_authorized(
             case.subscription.id,
             retry_order,
-            first_attempt=False,
-            attempt_token=retry_token,
         )
 
+    first_marker = (await case.repository.get(case.subscription.id)).submitted_at
+    assert first_marker is not None
     # The newer request reached YooKassa, so even a definite refusal for the delayed
     # first preparation cannot establish that this idempotency key was never charged.
     case.provider.reject = True
@@ -95,8 +88,6 @@ async def test_delayed_first_preparation_cannot_retire_a_later_ambiguous_submiss
     result = await case.worker._submit_if_authorized(
         case.subscription.id,
         order,
-        first_attempt=True,
-        attempt_token=initial_token,
     )
 
     assert result is not None and result[2].outcome == "ambiguous"
@@ -105,7 +96,7 @@ async def test_delayed_first_preparation_cannot_retire_a_later_ambiguous_submiss
     assert saved.status is TransactionStatus.PENDING
     assert saved.external_payment_id is None
     assert current.pending_transaction_id == order.id
-    assert current.attempted_at == retry_token
+    assert current.submitted_at > first_marker
     assert current.enabled
     assert len(case.provider.posts) == 2
     assert len(case.provider.keys) == 1
@@ -114,41 +105,33 @@ async def test_delayed_first_preparation_cannot_retire_a_later_ambiguous_submiss
     }
 
 
-async def test_attempt_preparation_tokens_advance_when_the_clock_is_frozen(case, monkeypatch):
+async def test_submission_markers_advance_when_the_clock_is_frozen(case, monkeypatch):
     frozen = datetime_now()
     monkeypatch.setattr(recurring_repository_module, "datetime_now", lambda: frozen)
-    _, order, _, first_token = await _prepare(case)
-    later = await case.worker._pending_context(case.subscription.id)
-    assert later is not None
-    _, _, _, second_token = later
-
-    assert first_token == frozen
-    assert second_token == frozen + timedelta(microseconds=1)
-    result = await case.worker._submit_if_authorized(
-        case.subscription.id,
-        order,
-        first_attempt=False,
-        attempt_token=second_token,
-    )
+    _, order, _ = await _prepare(case)
+    case.provider.lose_response = True
+    with pytest.raises(httpx.ReadTimeout):
+        await case.worker._submit_if_authorized(case.subscription.id, order)
+    assert (await case.repository.get(case.subscription.id)).submitted_at == frozen
+    result = await case.worker._submit_if_authorized(case.subscription.id, order)
     assert result is not None and result[2].outcome == "accepted"
-    polling = await case.worker._pending_context(case.subscription.id)
-    assert polling is not None and polling[3] is None
     current = await case.repository.get(case.subscription.id)
-    assert current.attempted_at == second_token
+    assert current.submitted_at == frozen + timedelta(microseconds=1)
+    await case.worker._pending_context(case.subscription.id)
+    assert (await case.repository.get(case.subscription.id)).submitted_at == current.submitted_at
+    assert len(case.provider.keys) == 1
 
 
 @pytest.mark.parametrize("code", [400, 401])
 async def test_stale_submission_cannot_change_a_replacement_attempt(
     case, transaction_repository, uow, code
 ):
-    initial, old_order, _, token = await _prepare(case)
+    _, old_order, _ = await _prepare(case)
     case.provider.reject = True
     case.provider.reject_code = code
     await case.worker._charge(
         case.subscription.id,
         old_order,
-        first_attempt=initial.attempted_at is None,
-        attempt_token=token,
     )
     values = {field.name: getattr(old_order, field.name) for field in fields(CreateTransactionDto)}
     values["idempotency_key"] = uuid4().hex
@@ -169,8 +152,6 @@ async def test_stale_submission_cannot_change_a_replacement_attempt(
     await case.worker._charge(
         case.subscription.id,
         old_order,
-        first_attempt=True,
-        attempt_token=token,
     )
 
     current = await case.repository.get(case.subscription.id)

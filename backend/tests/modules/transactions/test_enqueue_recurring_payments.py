@@ -169,16 +169,18 @@ async def test_technical_deferral_preserves_the_bank_retry_deadline_and_releases
 async def test_preference_toggles_cannot_erase_an_unresolved_bank_outcome(case, uow, reason):
     original = await case.repository.get(case.subscription.id)
     async with uow:
+        await case.repository.mark_submitted(case.subscription.id)
         await case.repository.pause(case.subscription.id, reason)
         await case.repository.set_enabled(case.subscription.id, False)
     disabled = await case.repository.get(case.subscription.id)
-    assert not disabled.enabled and disabled.last_error == reason
+    assert not disabled.enabled and disabled.last_error == "customer_disabled"
     async with uow:
         await case.repository.set_enabled(
             case.subscription.id, True, consent_id=original.consent_id
         )
     blocked = await case.repository.get(case.subscription.id)
-    assert not blocked.enabled and blocked.last_error == reason
+    assert not blocked.enabled and blocked.last_error == "payment_status_unknown"
+    assert blocked.submitted_at is not None
 
 
 async def test_fresh_enable_resets_the_bank_schedule_but_disable_keeps_retry_history(

@@ -20,7 +20,13 @@ from app.modules.transactions.recurring_events import (
     RecurringPaymentUpcomingEvent,
     persist_recurring_event,
 )
-from app.modules.transactions.recurring_policy import ATTENTION_REASONS, SAFE_REPOST_WINDOW
+from app.modules.transactions.recurring_policy import (
+    POLICY_RECHECK_DELAY,
+    SAFE_REPOST_WINDOW,
+    RecurringReason,
+    recurring_reason,
+)
+from app.modules.transactions.recurring_queries import renewal_window_expired
 from app.modules.transactions.recurring_terms import RecurringTerms
 
 
@@ -46,7 +52,8 @@ class RecurringPaymentRepository:
             customer_disabled=row.customer_disabled,
             last_error=row.last_error,
             pending_transaction_id=row.pending_transaction_id,
-            attempted_at=row.attempted_at,
+            submitted_at=row.submitted_at,
+            disabled_at=row.disabled_at,
             consent_id=row.consent_id,
             first_failure_at=row.first_failure_at,
             retry_count=row.retry_count,
@@ -67,24 +74,30 @@ class RecurringPaymentRepository:
         pending: Optional[bool] = None,
         claim_until: Optional[datetime] = None,
     ) -> list[int]:
-        # Pending polls get their own quota so an incident cannot starve new renewals.
+        await self.close_overdue(now, limit=limit)
         statement = (
             select(RecurringPayment.subscription_id)
             .join(Subscription, Subscription.id == RecurringPayment.subscription_id)
-            .outerjoin(Transaction, Transaction.id == RecurringPayment.pending_transaction_id)
+            .outerjoin(RecurringConsent, RecurringConsent.id == RecurringPayment.consent_id)
             .where(
                 RecurringPayment.next_attempt_at <= now,
                 or_(RecurringPayment.leased_until.is_(None), RecurringPayment.leased_until <= now),
                 or_(
                     RecurringPayment.pending_transaction_id.is_not(None),
-                    RecurringPayment.enabled.is_(True) & (Subscription.expire_at <= due_before),
-                ),
-                or_(
-                    RecurringPayment.last_error.is_(None),
-                    RecurringPayment.last_error.not_in((*ATTENTION_REASONS, "retries_exhausted")),
                     and_(
-                        Transaction.status.is_not(None),
-                        Transaction.status != TransactionStatus.PENDING,
+                        RecurringPayment.enabled.is_(True),
+                        Subscription.expire_at <= due_before,
+                        ~renewal_window_expired(now),
+                        or_(
+                            RecurringPayment.last_error.is_(None),
+                            RecurringPayment.last_error.not_in(
+                                [
+                                    reason.value
+                                    for reason in RecurringReason
+                                    if not reason.policy.allows_debit
+                                ]
+                            ),
+                        ),
                     ),
                 ),
             )
@@ -107,6 +120,32 @@ class RecurringPaymentRepository:
                 .values(leased_until=claim_until)
             )
         return ids
+
+    async def close_overdue(self, now: datetime, *, limit: int) -> None:
+        ids = list(
+            await self.session.scalars(
+                select(RecurringPayment.subscription_id)
+                .join(Subscription, Subscription.id == RecurringPayment.subscription_id)
+                .outerjoin(RecurringConsent, RecurringConsent.id == RecurringPayment.consent_id)
+                .where(
+                    RecurringPayment.enabled.is_(True),
+                    RecurringPayment.pending_transaction_id.is_(None),
+                    renewal_window_expired(now),
+                )
+                .order_by(Subscription.expire_at, RecurringPayment.subscription_id)
+                .limit(limit)
+                .with_for_update(of=RecurringPayment, skip_locked=True)
+            )
+        )
+        for subscription_id in ids:
+            current = await self.get(subscription_id)
+            reason = recurring_reason(current.last_error) if current else None
+            await self.disable(
+                subscription_id,
+                reason
+                if reason and reason.policy.terminal
+                else RecurringReason.RENEWAL_WINDOW_EXPIRED,
+            )
 
     async def notify_upcoming(
         self,
@@ -211,91 +250,66 @@ class RecurringPaymentRepository:
         )
 
     async def set_enabled(
-        self, subscription_id: int, enabled: bool, *, consent_id: Optional[int] = None
+        self,
+        subscription_id: int,
+        enabled: bool,
+        *,
+        consent_id: Optional[int] = None,
+        disabled_at: Optional[datetime] = None,
     ) -> None:
         now = datetime_now()
-        # A tombstone also covers cancellation before the fulfillment event enrolls the order.
         await self.session.execute(
             insert(RecurringPayment)
-            .values(
-                subscription_id=subscription_id,
-                consent_id=consent_id,
-                enabled=enabled and consent_id is not None,
-                customer_disabled=not enabled,
-                disabled_at=None if enabled else now,
-                last_error=None if enabled else "customer_disabled",
-                next_attempt_at=now,
-            )
-            .on_conflict_do_update(
-                index_elements=[RecurringPayment.subscription_id],
-                set_={
-                    # Unresolved bank outcomes must survive a preference toggle.
-                    "consent_id": consent_id,
-                    "enabled": case(
-                        (RecurringPayment.last_error.in_(ATTENTION_REASONS), False),
-                        else_=enabled and consent_id is not None,
-                    ),
-                    "customer_disabled": not enabled,
-                    "disabled_at": None if enabled else now,
-                    "last_error": case(
-                        (
-                            RecurringPayment.last_error.in_(ATTENTION_REASONS),
-                            RecurringPayment.last_error,
-                        ),
-                        else_=None if enabled else "customer_disabled",
-                    ),
-                    "leased_until": None,
-                    "bank_retry_at": case(
-                        (
-                            RecurringPayment.last_error.in_(ATTENTION_REASONS),
-                            RecurringPayment.bank_retry_at,
-                        ),
-                        else_=None
-                        if enabled and consent_id is not None
-                        else RecurringPayment.bank_retry_at,
-                    ),
-                    "first_failure_at": case(
-                        (
-                            RecurringPayment.last_error.in_(ATTENTION_REASONS),
-                            RecurringPayment.first_failure_at,
-                        ),
-                        else_=None
-                        if enabled and consent_id is not None
-                        else RecurringPayment.first_failure_at,
-                    ),
-                    "retry_count": case(
-                        (
-                            RecurringPayment.last_error.in_(ATTENTION_REASONS),
-                            RecurringPayment.retry_count,
-                        ),
-                        else_=0
-                        if enabled and consent_id is not None
-                        else RecurringPayment.retry_count,
-                    ),
-                    "next_attempt_at": now,
-                    "updated_at": now,
-                },
-            )
+            .values(subscription_id=subscription_id, enabled=False, next_attempt_at=now)
+            .on_conflict_do_nothing(index_elements=[RecurringPayment.subscription_id])
         )
+        row = await self.session.get(
+            RecurringPayment, subscription_id, with_for_update=True, populate_existing=True
+        )
+        if row is None:
+            return
+        unknown = row.submitted_at is not None and row.pending_transaction_id is None
+        row.consent_id = consent_id
+        row.customer_disabled = not enabled
+        row.enabled = enabled and consent_id is not None and not unknown
+        row.disabled_at = None if enabled else disabled_at or now
+        row.last_error = (
+            RecurringReason.CUSTOMER_DISABLED
+            if not enabled
+            else RecurringReason.PAYMENT_STATUS_UNKNOWN
+            if unknown
+            else None
+        )
+        row.leased_until = None
+        row.next_attempt_at = now
+        if enabled and consent_id is not None and not unknown:
+            row.bank_retry_at = None
+            row.first_failure_at = None
+            row.retry_count = 0
+        await self.session.flush()
 
     async def defer(
         self, subscription_id: int, until: datetime, error: Optional[str] = None
     ) -> None:
-        values: dict[str, object] = {"next_attempt_at": until, "leased_until": None}
-        if error is not None:
-            values["last_error"] = error
-            await self._notice_pause(subscription_id, error, until)
-        await self.session.execute(
-            update(RecurringPayment)
-            .where(RecurringPayment.subscription_id == subscription_id)
-            .values(**values)
+        row = await self.session.get(
+            RecurringPayment, subscription_id, with_for_update=True, populate_existing=True
         )
+        if row is None:
+            return
+        if row.customer_disabled:
+            row.last_error = RecurringReason.CUSTOMER_DISABLED
+        elif error is not None:
+            await self._notice_pause(subscription_id, error, until)
+            row.last_error = error
+        row.next_attempt_at = until
+        row.leased_until = None
+        await self.session.flush()
 
     async def _notice_pause(
         self, subscription_id: int, reason: str, until: Optional[datetime] = None
     ) -> None:
         row = await self.get(subscription_id, for_update=True)
-        if row is None or row.last_error == reason:
+        if row is None or row.customer_disabled or row.last_error == reason:
             return
         subscription = await self.session.get(Subscription, subscription_id)
         if subscription is not None:
@@ -313,26 +327,77 @@ class RecurringPaymentRepository:
     async def pause(
         self, subscription_id: int, reason: str, *, until: Optional[datetime] = None
     ) -> None:
-        until = until or datetime_now() + timedelta(hours=1)
+        until = until or datetime_now() + POLICY_RECHECK_DELAY
         await self.defer(subscription_id, until, reason)
+
+    async def resume(self, subscription_id: int) -> None:
+        await self.session.execute(
+            update(RecurringPayment)
+            .where(
+                RecurringPayment.subscription_id == subscription_id,
+                RecurringPayment.customer_disabled.is_(False),
+                RecurringPayment.pending_transaction_id.is_(None),
+                RecurringPayment.submitted_at.is_(None),
+            )
+            .values(
+                enabled=True,
+                disabled_at=None,
+                last_error=None,
+                next_attempt_at=datetime_now(),
+                leased_until=None,
+            )
+        )
 
     async def clear_error(self, subscription_id: int) -> None:
         await self.session.execute(
             update(RecurringPayment)
             .where(RecurringPayment.subscription_id == subscription_id)
-            .values(last_error=None, leased_until=None)
+            .values(
+                last_error=case(
+                    (RecurringPayment.customer_disabled, RecurringReason.CUSTOMER_DISABLED),
+                    else_=None,
+                ),
+                leased_until=None,
+            )
         )
 
     async def disable(self, subscription_id: int, reason: str) -> None:
-        await self._notice_pause(subscription_id, reason)
-        await self.session.execute(
-            update(RecurringPayment)
-            .where(RecurringPayment.subscription_id == subscription_id)
-            .values(enabled=False, disabled_at=datetime_now(), last_error=reason, leased_until=None)
+        row = await self.session.get(
+            RecurringPayment, subscription_id, with_for_update=True, populate_existing=True
         )
+        if row is None:
+            return
+        await self._notice_pause(subscription_id, reason)
+        row.enabled = False
+        row.leased_until = None
+        if not row.customer_disabled:
+            row.disabled_at = datetime_now()
+            row.last_error = reason
+        await self.session.flush()
+
+    async def close_for_plan_change(self, subscription_id: int) -> None:
+        current = await self.get(subscription_id)
+        if current is None:
+            return
+        if current.pending_transaction_id is not None:
+            await self.session.get(
+                Transaction, current.pending_transaction_id, with_for_update=True
+            )
+        row = await self.session.get(
+            RecurringPayment, subscription_id, with_for_update=True, populate_existing=True
+        )
+        if row is None:
+            return
+        if row.consent_id is not None:
+            await self.session.execute(
+                update(RecurringConsent)
+                .where(RecurringConsent.id == row.consent_id, RecurringConsent.revoked_at.is_(None))
+                .values(revoked_at=datetime_now(), revoked_channel="plan_change")
+            )
+        await self.disable(subscription_id, RecurringReason.SUBSCRIPTION_CHANGED)
 
     async def set_pending(
-        self, subscription_id: int, transaction_id: int, *, expire_at: Optional[datetime] = None
+        self, subscription_id: int, transaction_id: int, *, expire_at: datetime
     ) -> None:
         await self.session.execute(
             update(RecurringPayment)
@@ -340,7 +405,7 @@ class RecurringPaymentRepository:
             .values(
                 pending_transaction_id=transaction_id,
                 leased_until=None,
-                attempted_at=None,
+                submitted_at=None,
                 pending_since=datetime_now(),
                 cycle_expire_at=expire_at,
             )
@@ -372,9 +437,9 @@ class RecurringPaymentRepository:
                 subscription_id, reason, datetime_now() + timedelta(minutes=retry_minutes)
             )
         row.pending_transaction_id = None
-        row.attempted_at = None
         row.pending_since = None
-        row.last_error = reason
+        row.submitted_at = None
+        row.last_error = RecurringReason.CUSTOMER_DISABLED if row.customer_disabled else reason
         row.leased_until = None
         row.next_attempt_at = (
             datetime_now() + timedelta(minutes=retry_minutes) if reason else datetime_now()
@@ -390,7 +455,6 @@ class RecurringPaymentRepository:
         *,
         transaction_id: Optional[int] = None,
         permanent: bool = False,
-        quiet: bool = False,
     ) -> None:
         current = await self.get(subscription_id)
         expected = transaction_id or (current.pending_transaction_id if current else None)
@@ -414,8 +478,10 @@ class RecurringPaymentRepository:
         terms = await self.consent_terms(row.consent_id)
         now = datetime_now()
         row.pending_transaction_id = None
-        row.attempted_at = None
         row.pending_since = None
+        row.submitted_at = None
+        if await self._failure_while_closed(row, reason, permanent, now):
+            return
         if (
             subscription is not None
             and row.cycle_expire_at is not None
@@ -423,8 +489,8 @@ class RecurringPaymentRepository:
         ):
             self._reset_cycle(row, now)
             return
-        row.first_failure_at = row.first_failure_at or now
-        next_at = self._next_retry(row, terms, subscription, now, quiet=quiet)
+        row.first_failure_at = row.first_failure_at if permanent else row.first_failure_at or now
+        next_at = None if permanent else self._next_retry(row, terms, subscription, now)
         retry = bool(
             next_at is not None
             and not permanent
@@ -432,12 +498,12 @@ class RecurringPaymentRepository:
             and row.enabled
             and not row.customer_disabled
         )
-        row.retry_count += 0 if quiet else 1
+        row.retry_count += 0 if permanent else 1
         row.last_error = reason
         row.leased_until = None
         row.next_attempt_at = next_at if retry and next_at is not None else now
         row.bank_retry_at = next_at if retry else None
-        if subscription is not None and not quiet:
+        if subscription is not None and retry:
             await persist_recurring_event(
                 self.session,
                 RecurringPaymentFailedEvent(
@@ -454,18 +520,7 @@ class RecurringPaymentRepository:
         if not retry:
             row.last_error = reason if permanent else "retries_exhausted"
             if permanent:
-                row.enabled = False
-                row.disabled_at = now
-                row.payment_method_id = None
-                if reason == "permission_revoked" and row.consent_id is not None:
-                    await self.session.execute(
-                        update(RecurringConsent)
-                        .where(
-                            RecurringConsent.id == row.consent_id,
-                            RecurringConsent.revoked_at.is_(None),
-                        )
-                        .values(revoked_at=now, revoked_channel="provider")
-                    )
+                await self._reject_method(row, reason, now)
             if subscription is not None:
                 await persist_recurring_event(
                     self.session,
@@ -478,19 +533,44 @@ class RecurringPaymentRepository:
                 )
         await self.session.flush()
 
+    async def _failure_while_closed(
+        self,
+        row: RecurringPayment,
+        reason: str,
+        permanent: bool,
+        now: datetime,
+    ) -> bool:
+        if row.enabled and not row.customer_disabled:
+            return False
+        if permanent:
+            await self._reject_method(row, reason, now)
+        if row.customer_disabled:
+            row.last_error = RecurringReason.CUSTOMER_DISABLED
+        row.leased_until = None
+        await self.session.flush()
+        return True
+
+    async def _reject_method(self, row: RecurringPayment, reason: str, now: datetime) -> None:
+        row.enabled = False
+        if not row.customer_disabled:
+            row.disabled_at = now
+        row.payment_method_id = None
+        if reason == RecurringReason.PERMISSION_REVOKED and row.consent_id is not None:
+            await self.session.execute(
+                update(RecurringConsent)
+                .where(RecurringConsent.id == row.consent_id, RecurringConsent.revoked_at.is_(None))
+                .values(revoked_at=now, revoked_channel="provider")
+            )
+
     @staticmethod
     def _next_retry(
         row: RecurringPayment,
         terms: Optional[RecurringTerms],
         subscription: Optional[Subscription],
         now: datetime,
-        *,
-        quiet: bool,
     ) -> Optional[datetime]:
         if terms is None or row.first_failure_at is None:
             return None
-        if quiet:
-            return now + timedelta(minutes=terms.retry_minutes)
         offsets = terms.retry_offsets_hours
         count = row.retry_count
         if count < 0 or count >= len(offsets):
@@ -519,6 +599,7 @@ class RecurringPaymentRepository:
         row.retry_count = 0
         row.cycle_expire_at = None
         row.pending_since = None
+        row.submitted_at = None
         row.last_error = "customer_disabled" if row.customer_disabled else None
         row.leased_until = None
         row.next_attempt_at = now
@@ -529,6 +610,7 @@ class RecurringPaymentRepository:
         transaction_id: Optional[int] = None,
         *,
         force_unknown: bool = False,
+        notify: bool = True,
     ) -> bool:
         if transaction_id is None:
             current = await self.get(subscription_id)
@@ -536,14 +618,12 @@ class RecurringPaymentRepository:
                 return False
             transaction_id = current.pending_transaction_id
         return await self._retire_pending_order(
-            subscription_id, transaction_id, force_unknown=force_unknown
+            subscription_id, transaction_id, force_unknown=force_unknown, notify=notify
         )
 
     async def _retire_pending_order(
-        self, subscription_id: int, transaction_id: int, *, force_unknown: bool
+        self, subscription_id: int, transaction_id: int, *, force_unknown: bool, notify: bool
     ) -> bool:
-        # Fulfillment locks the order before the mandate. Keeping that order here
-        # lets a concurrent verified webhook win without a lock inversion.
         order = await self.session.get(
             Transaction, transaction_id, with_for_update=True, populate_existing=True
         )
@@ -551,53 +631,98 @@ class RecurringPaymentRepository:
             order is None
             or not order.is_recurring
             or order.target_subscription_id != subscription_id
-            or order.status is not TransactionStatus.PENDING
+            or order.status
+            not in {
+                TransactionStatus.PENDING,
+                TransactionStatus.FAILED,
+                TransactionStatus.CANCELED,
+            }
+            or (order.external_payment_id is not None and not force_unknown)
         ):
             return False
-        if order.status is TransactionStatus.PENDING and order.external_payment_id is not None:
-            return False
-        row = await self.session.scalar(
-            select(RecurringPayment)
-            .where(RecurringPayment.subscription_id == subscription_id)
-            .with_for_update()
-            .execution_options(populate_existing=True)
+        row = await self.session.get(
+            RecurringPayment, subscription_id, with_for_update=True, populate_existing=True
         )
         if row is None or row.pending_transaction_id != transaction_id:
             return False
         now = datetime_now()
-        unknown = order.status is TransactionStatus.PENDING
-        if unknown and not (
-            force_unknown
-            or row.last_error == "payment_status_unknown"
-            or order.created_at <= now - SAFE_REPOST_WINDOW
+        if (
+            not force_unknown
+            and order.status is TransactionStatus.PENDING
+            and order.created_at > now - SAFE_REPOST_WINDOW
         ):
             return False
-        if unknown:
-            # FAILED closes our local attempt; it does not assert a bank refusal.
-            # The order/key remain available for a late verified success webhook.
-            order.status = TransactionStatus.FAILED
-        reconnected = await self.has_manual_after(
+        unknown = row.submitted_at is not None or order.external_payment_id is not None
+        order.status = TransactionStatus.FAILED if unknown else TransactionStatus.CANCELED
+        reconnected = unknown and await self.has_manual_after(
             subscription_id, created_at=order.created_at, plan_id=order.plan_id
         )
+        if unknown and not reconnected and not row.customer_disabled and notify:
+            await self._notice_pause(subscription_id, RecurringReason.PAYMENT_STATUS_UNKNOWN)
         row.pending_transaction_id = None
-        row.attempted_at = None
+        row.pending_since = None
         row.leased_until = None
         row.next_attempt_at = now
-        if not reconnected:
-            await self._notice_pause(
-                subscription_id, "payment_status_unknown" if unknown else "payment_canceled"
-            )
+        if row.customer_disabled:
+            row.last_error = RecurringReason.CUSTOMER_DISABLED
+        elif unknown and not reconnected:
             row.enabled = False
             row.disabled_at = now
-            row.last_error = (
-                "payment_status_unknown" if unknown else row.last_error or "payment_canceled"
-            )
+            row.last_error = RecurringReason.PAYMENT_STATUS_UNKNOWN
+        elif not unknown or (reconnected and not force_unknown):
+            # A delivered manual renewal already paid this cycle; its future mandate
+            # must not inherit a retired attempt's submission marker.
+            self._reset_cycle(row, now)
         await self.session.flush()
         logger.warning(
-            f"Retired recurring order '{transaction_id}' for subscription '{subscription_id}'; "
-            f"provider outcome unknown: {unknown}, newer manual enrollment: {reconnected}"
+            f"Retired recurring order '{transaction_id}'; provider outcome unknown: {unknown}"
         )
         return True
+
+    async def cancel_unsent(self, subscription_id: int, transaction_id: int) -> bool:
+        order = await self.session.get(
+            Transaction, transaction_id, with_for_update=True, populate_existing=True
+        )
+        row = await self.session.get(
+            RecurringPayment, subscription_id, with_for_update=True, populate_existing=True
+        )
+        if (
+            order is None
+            or row is None
+            or row.pending_transaction_id != transaction_id
+            or order.status is not TransactionStatus.PENDING
+            or order.external_payment_id is not None
+            or row.submitted_at is not None
+        ):
+            return False
+        order.status = TransactionStatus.CANCELED
+        row.pending_transaction_id = None
+        row.pending_since = None
+        row.leased_until = None
+        await self.session.flush()
+        return True
+
+    async def clear_submission(self, subscription_id: int) -> None:
+        await self.session.execute(
+            update(RecurringPayment)
+            .where(RecurringPayment.subscription_id == subscription_id)
+            .values(submitted_at=None)
+        )
+
+    async def mark_submitted(self, subscription_id: int) -> datetime:
+        token = await self.session.scalar(
+            update(RecurringPayment)
+            .where(RecurringPayment.subscription_id == subscription_id)
+            .values(
+                submitted_at=func.greatest(
+                    datetime_now(), RecurringPayment.submitted_at + timedelta(microseconds=1)
+                )
+            )
+            .returning(RecurringPayment.submitted_at)
+        )
+        if token is None:
+            raise RuntimeError("Recurring mandate disappeared before submission")
+        return token
 
     async def has_manual_waiting(self, subscription_id: int) -> bool:
         return (
@@ -635,6 +760,72 @@ class RecurringPaymentRepository:
             is not None
         )
 
+    async def _latest_order(self, subscription_id: int) -> Optional[int]:
+        latest: Optional[int] = await self.session.scalar(
+            select(Transaction.id)
+            .where(
+                Transaction.target_subscription_id == subscription_id,
+                Transaction.is_recurring.is_(True),
+                Transaction.is_test.is_(False),
+            )
+            .order_by(Transaction.id.desc())
+            .limit(1)
+        )
+        return latest
+
+    async def on_canceled(self, order_id: int, reason: str) -> None:
+        order = await self.session.get(
+            Transaction, order_id, with_for_update=True, populate_existing=True
+        )
+        if (
+            order is None
+            or not order.is_recurring
+            or order.status is not TransactionStatus.CANCELED
+            or order.target_subscription_id is None
+        ):
+            return
+        row = await self.session.get(
+            RecurringPayment,
+            order.target_subscription_id,
+            with_for_update=True,
+            populate_existing=True,
+        )
+        if row is None:
+            return
+        resolved = recurring_reason(reason) or RecurringReason.BANK_DECLINED
+        if row.pending_transaction_id != order.id:
+            if (
+                row.pending_transaction_id is not None
+                or row.submitted_at is None
+                or await self._latest_order(row.subscription_id) != order.id
+            ):
+                return
+            active = (
+                not row.customer_disabled
+                and row.consent_id == order.recurring_consent_id
+                and row.payment_method_id is not None
+                and await self.consent_terms(row.consent_id) is not None
+            )
+            if not active:
+                previous = row.last_error
+                now = datetime_now()
+                self._reset_cycle(row, now)
+                if resolved.policy.terminal:
+                    await self._reject_method(row, resolved, now)
+                if previous == RecurringReason.ADMIN_CLOSED and not row.customer_disabled:
+                    row.last_error = previous
+                await self.session.flush()
+                return
+            row.pending_transaction_id = order.id
+            row.enabled = True
+            await self.session.flush()
+        await self.fail_pending(
+            row.subscription_id,
+            resolved,
+            transaction_id=order.id,
+            permanent=resolved.policy.terminal,
+        )
+
     async def _on_recurring_fulfilled(
         self, order: Transaction, subscription_id: int, now: datetime
     ) -> None:
@@ -644,39 +835,25 @@ class RecurringPaymentRepository:
         if row is None:
             return
         if row.pending_transaction_id != order.id:
+            latest = await self._latest_order(subscription_id)
+            if (
+                row.pending_transaction_id is not None
+                or row.submitted_at is None
+                or latest != order.id
+            ):
+                return
             recovered = (
-                row.pending_transaction_id is None
-                and row.last_error == "payment_status_unknown"
-                and not row.customer_disabled
+                not row.customer_disabled
                 and row.consent_id == order.recurring_consent_id
                 and row.payment_method_id is not None
+                and await self.consent_terms(row.consent_id) is not None
             )
-            if not recovered or await self.consent_terms(row.consent_id) is None:
-                return
-            # A verified late success resolves the ambiguity, retaining the original grant.
-            row.enabled = True
-            row.disabled_at = None
+            if recovered:
+                row.enabled = True
+                row.disabled_at = None
         row.pending_transaction_id = None
-        row.attempted_at = None
         self._reset_cycle(row, now)
         await self.session.flush()
-
-    async def mark_attempted(self, subscription_id: int) -> datetime:
-        # A strictly advancing token invalidates earlier preparations even with a frozen clock.
-        token = await self.session.scalar(
-            update(RecurringPayment)
-            .where(RecurringPayment.subscription_id == subscription_id)
-            .values(
-                attempted_at=func.greatest(
-                    datetime_now(), RecurringPayment.attempted_at + timedelta(microseconds=1)
-                ),
-                leased_until=None,
-            )
-            .returning(RecurringPayment.attempted_at)
-        )
-        if token is None:
-            raise RuntimeError("Recurring mandate disappeared before submission")
-        return token
 
     async def on_fulfilled(self, order: Transaction, subscription_id: int) -> None:
         now = datetime_now()
@@ -691,7 +868,7 @@ class RecurringPaymentRepository:
             else None
         )
         if previous is not None and previous.customer_disabled:
-            await self.set_enabled(subscription_id, False)
+            await self.set_enabled(subscription_id, False, disabled_at=previous.disabled_at)
         if not order.recurring_consent and await self.get(subscription_id) is None:
             return
         # Serializes enrollment of two manual payments for the same subscription.
@@ -713,6 +890,14 @@ class RecurringPaymentRepository:
             return
         if order.status is not TransactionStatus.PAID or order.is_test:
             return
+        if (
+            not order.saved_payment_method_id
+            and row.payment_method_id
+            and not row.customer_disabled
+            and await self.consent_terms(row.consent_id) is not None
+        ):
+            self._preserve_manual_renewal(row, now)
+            return
         await self._adopt_consent(row, order, subscription_id, now)
 
     @staticmethod
@@ -723,7 +908,13 @@ class RecurringPaymentRepository:
             return
         row.first_failure_at = None
         row.retry_count = 0
-        row.last_error = "customer_disabled" if row.customer_disabled else None
+        row.last_error = (
+            RecurringReason.CUSTOMER_DISABLED
+            if row.customer_disabled
+            else RecurringReason.PAYMENT_STATUS_UNKNOWN
+            if row.submitted_at and row.pending_transaction_id is None
+            else None
+        )
         row.next_attempt_at = now
         if row.pending_transaction_id is None:
             row.cycle_expire_at = None
@@ -746,6 +937,14 @@ class RecurringPaymentRepository:
             and row.disabled_at is not None
             and consent.accepted_at > row.disabled_at
         )
+        if not order.saved_payment_method_id and valid and not opted_out:
+            await self._notice_pause(subscription_id, RecurringReason.PAYMENT_METHOD_NOT_SAVED)
+        if row.consent_id is not None and row.consent_id != order.recurring_consent_id:
+            await self.session.execute(
+                update(RecurringConsent)
+                .where(RecurringConsent.id == row.consent_id, RecurringConsent.revoked_at.is_(None))
+                .values(revoked_at=now, revoked_channel="replaced")
+            )
         row.source_transaction_id = order.id
         row.payment_method_id = order.saved_payment_method_id
         row.shop_id = order.payment_method_shop_id or ""
@@ -772,4 +971,5 @@ class RecurringPaymentRepository:
         row.retry_count = 0
         if row.pending_transaction_id is None:
             row.cycle_expire_at = None
+            row.submitted_at = None
         await self.session.flush()

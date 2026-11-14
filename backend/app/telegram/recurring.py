@@ -1,6 +1,6 @@
 from typing import Final
 
-# A 128-bit prefix leaves room for the widget and dialog IDs in a 64-byte callback.
+# A 64-bit prefix leaves room for the widget and dialog IDs in a 64-byte callback.
 _CALLBACK_PREFIX_LENGTH: Final[int] = 16
 
 

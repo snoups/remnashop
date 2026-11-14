@@ -32,6 +32,7 @@ from app.modules.subscriptions.repository import SubscriptionRepository
 from app.modules.subscriptions.revoker import PanelSubscriptionRevoker
 from app.modules.subscriptions.rollback import PurchaseRollbackService
 from app.modules.subscriptions.usecases import PurchaseSubscriptionUseCase
+from app.modules.transactions.recurring_repository import RecurringPaymentRepository
 from app.modules.users.dto import CreateUserDto, UserDto
 from app.modules.users.repository import UserRepository
 from tests.fakes.remnawave import FakeUserStore
@@ -60,6 +61,7 @@ def purchase(
         idempotency_repository,
         UserRepository(subscription_repository.session),
         AppConfig.get(),
+        recurring_closer=RecurringPaymentRepository(subscription_repository.session),
     )
 
 

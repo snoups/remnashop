@@ -208,7 +208,22 @@ class YooKassaGateway(PaymentGateway[YooKassaSettings]):
     async def confirm_reported(
         self, order: TransactionDto, signal: WebhookSignal
     ) -> Optional[WebhookSignal]:
-        # notifications are unsigned, and a refund also claws back referral rewards
+        # Cancellation callbacks can also recover the ID lost with the create response.
+        if signal.reported_status is TransactionStatus.CANCELED:
+            payment = await self.fetch_payment(order, signal)
+            if (
+                payment.status is not TransactionStatus.CANCELED
+                or payment.reference != order.idempotency_key
+                or payment.amount != order.final_price
+                or payment.currency != order.currency.value
+            ):
+                return None
+            return replace(
+                signal,
+                provider_payment_id=payment.provider_payment_id,
+                cancellation_reason=payment.cancellation_reason,
+            )
+        # Notifications are unsigned; a refund claws back referral rewards.
         if not order.external_payment_id:
             return None
         response = await self._http.get(
@@ -224,4 +239,4 @@ class YooKassaGateway(PaymentGateway[YooKassaSettings]):
             if not amount:
                 return None
             return replace(signal, refund_amount=amount, refund_currency=refunded.get("currency"))
-        return signal if data.get("status") == _CANCELED_STATUS else None
+        return None

@@ -179,7 +179,9 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
         status = signal.reported_status
         allowed_from = _REPORTED_FROM.get(status, frozenset())
         order = await self._resolve_order(gateway_type, signal)
-        if order is None or order.status not in allowed_from:
+        if order is not None and order.is_recurring and status is TransactionStatus.CANCELED:
+            allowed_from = allowed_from | {TransactionStatus.FAILED}
+        if order is None or order.status not in allowed_from or order.status is status:
             return
         try:
             confirmed = await gateway.confirm_reported(order, signal)
@@ -208,7 +210,7 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
                     )
                 )
             return
-        await self._apply_reported_status(order, status, gateway_type, allowed_from)
+        await self._apply_reported_status(order, status, gateway_type, allowed_from, signal)
 
     async def _apply_reported_status(
         self,
@@ -216,6 +218,7 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
         status: TransactionStatus,
         gateway_type: PaymentGatewayType,
         allowed_from: frozenset[TransactionStatus],
+        signal: WebhookSignal,
     ) -> None:
         # Only the PENDING -> unpaid transition hands a spent purchase discount
         # back: a second CANCELED for an already-canceled order must not restore
@@ -226,8 +229,21 @@ class HandlePaymentWebhookUseCase(UseCase[HandleWebhookDto, WebhookAck]):
             allowed_from = frozenset({TransactionStatus.PENDING})
         async with self._uow:
             changed = await self._transaction_repository.mark_status_if(
-                order.id, status, current=allowed_from
+                order.id,
+                status,
+                current=allowed_from,
+                external_payment_id=(
+                    signal.provider_payment_id
+                    if order.is_recurring
+                    and gateway_type is PaymentGatewayType.YOOKASSA
+                    and status is TransactionStatus.CANCELED
+                    else None
+                ),
             )
+            if changed and order.is_recurring and status is TransactionStatus.CANCELED:
+                await self._transaction_repository.record_recurring_cancellation(
+                    order.id, signal.cancellation_reason or "bank_declined"
+                )
             if changed and restores_discount:
                 await give_back_purchase_discount(self._user_repository, order)
             if changed and from_pending:
