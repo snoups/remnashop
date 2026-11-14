@@ -11,6 +11,7 @@ from sqlalchemy import (
     Integer,
     Select,
     Subquery,
+    case,
     cast,
     func,
     literal,
@@ -20,7 +21,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.constants import TIME_1D
+from app.core.constants import TIME_1D, UNLIMITED_COVERAGE_DAYS
 from app.core.db.filters import in_ids
 from app.core.db.models.transaction import Transaction
 from app.core.db.models.user import User
@@ -174,8 +175,13 @@ class TransactionStatsRepository:
         conditions: list[ColumnElement[bool]] = [*_PAID, Transaction.updated_at < before]
         if user_ids is not None:
             conditions.append(in_ids(Transaction.user_id, user_ids))
+        # an unlimited order has 0 days and covers for good
+        covered_days = case(
+            (Transaction.duration_days == 0, UNLIMITED_COVERAGE_DAYS),
+            else_=Transaction.duration_days,
+        )
         days_before = func.coalesce(
-            func.sum(Transaction.duration_days).over(
+            func.sum(covered_days).over(
                 partition_by=Transaction.user_id, order_by=order, rows=(None, -1)
             ),
             0,
@@ -184,18 +190,20 @@ class TransactionStatsRepository:
             select(
                 Transaction.user_id,
                 Transaction.updated_at.label("paid_at"),
-                Transaction.duration_days.label("days"),
+                covered_days.label("days"),
+                Transaction.duration_days.label("paid_days"),
                 Transaction.id,
                 days_before.label("days_before"),
             )
             .where(*conditions)
             .subquery()
         )
-        step_order = (steps.c.paid_at, steps.c.days, steps.c.id)
+        # ties broken as the running sum above orders them, by the days paid for
+        step_order = (steps.c.paid_at, steps.c.paid_days, steps.c.id)
         ends = select(
             steps.c.user_id,
             steps.c.paid_at,
-            steps.c.days,
+            steps.c.paid_days,
             steps.c.id,
             (
                 func.max(steps.c.paid_at - _days(steps.c.days_before)).over(
@@ -209,7 +217,10 @@ class TransactionStatsRepository:
             ends.c.paid_at,
             ends.c.covered_until,
             func.lag(ends.c.covered_until)
-            .over(partition_by=ends.c.user_id, order_by=(ends.c.paid_at, ends.c.days, ends.c.id))
+            .over(
+                partition_by=ends.c.user_id,
+                order_by=(ends.c.paid_at, ends.c.paid_days, ends.c.id),
+            )
             .label("previous_until"),
         ).subquery()
 

@@ -198,3 +198,6 @@ ICON_ID_KEY_SUFFIX: Final[str] = "-icon-id"
 
 # an unlimited purchase as days, for a percent-of-days referral reward
 DEFAULT_UNLIMITED_REWARD_DAYS: Final[int] = 365
+
+# an unlimited (0-day) order's paid coverage, long enough to outlast any report
+UNLIMITED_COVERAGE_DAYS: Final[int] = 36500

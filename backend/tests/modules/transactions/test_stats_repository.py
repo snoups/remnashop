@@ -178,7 +178,8 @@ async def _paid_history(
         payments: list[tuple[datetime, int]] = []
         for n in range(rng.randint(1, 6)):
             paid_at = base + timedelta(days=rng.randint(0, 380), hours=rng.randint(0, 23))
-            days = rng.choice((7, 30, 30, 90, 365))
+            # 0 is an unlimited order
+            days = rng.choice((0, 7, 30, 30, 90, 365))
             async with uow:
                 order = await transaction_repository.create(
                     _order(user.id, plan_id, f"cov-{seed}-{u}-{n}")
@@ -246,3 +247,25 @@ async def test_total_covered_days_matches_the_python_reference(
     payers, days = await stats.total_covered_days(now)
     assert payers - before_payers == len(history)
     assert days - before_days == pytest.approx(expected, abs=1e-3)
+
+
+async def test_a_test_payment_with_zero_days_is_no_coverage(
+    user_repository: UserRepository,
+    transaction_repository: TransactionRepository,
+    session: AsyncSession,
+    uow: UnitOfWork,
+    plan_id: int,
+) -> None:
+    user = await user_repository.create(CreateUserDto(name="tester", telegram_id=862_901))
+    async with uow:
+        order = await transaction_repository.create(_order(user.id, plan_id, "cov-test-payment"))
+    await transaction_repository.mark_status(order.id, TransactionStatus.PAID)
+    await session.execute(
+        update(Transaction).where(Transaction.id == order.id).values(duration_days=0, is_test=True)
+    )
+    now = datetime_now()
+    later = now + timedelta(days=400)
+
+    covered = await TransactionStatsRepository(session).users_covered_at([later], now)
+
+    assert user.id not in covered[later]
