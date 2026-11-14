@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Optional
 from uuid import UUID
@@ -52,6 +52,25 @@ def make_plan_snapshot(**overrides: Any) -> PlanSnapshot:
     }
     defaults.update(overrides)
     return PlanSnapshot(**defaults)
+
+
+def make_subscription_dto(**overrides: Any) -> SubscriptionDto:
+    """A SubscriptionDto that never touched the database, for pure rules."""
+    defaults: dict[str, Any] = {
+        "id": 1,
+        "user_id": 1,
+        "remnawave_user_id": 1,
+        "status": SubscriptionStatus.ACTIVE,
+        "traffic_limit": 100,
+        "device_limit": 3,
+        "effective_traffic_limit": 100,
+        "effective_device_limit": 3,
+        "expire_at": datetime(2030, 1, 1, tzinfo=timezone.utc),
+        "url": "https://example.test/sub",
+        "plan_snapshot": make_plan_snapshot(),
+    }
+    defaults.update(overrides)
+    return SubscriptionDto(**defaults)
 
 
 def snapshot_from_plan(plan: PlanDto, **overrides: Any) -> PlanSnapshot:
