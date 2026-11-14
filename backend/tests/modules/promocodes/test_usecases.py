@@ -527,6 +527,65 @@ async def test_activate_subscription_reward_creates_new_subscription(
     assert active[0].plan_snapshot.plan_id == plan.id
 
 
+async def test_unlimited_subscription_promocode_grants_a_2099_subscription(
+    promocode_repository: PromocodeRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk,
+    uow,
+    event_publisher,
+) -> None:
+    actor = await user_repository.create(CreateUserDto(name="Forever", telegram_id=302))
+    plan_repository = PlanRepository(promocode_repository.session)
+    plan = await plan_repository.create(
+        CreatePlanDto(
+            public_code="forever-promo",
+            name="Forever",
+            type=PlanType.BOTH,
+            traffic_limit=100,
+            device_limit=3,
+        )
+    )
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=plan.id,
+            durations=[SetPlanDurationDto(days=0, order_index=0, base_price=Decimal("5000"))],
+        )
+    )
+    await plan_repository.update_squads(
+        UpdatePlanSquadsDto(plan_id=plan.id, internal_squads=[uuid4()], external_squad=None)
+    )
+    await plan_repository.update(UpdatePlanDto(plan_id=plan.id, is_active=True))
+    await CreatePromocodeUseCase(
+        promocode_repository,
+        AddOnRepository(promocode_repository.session),
+        plan_repository,
+        uow,
+        event_publisher,
+    )(
+        OWNER,
+        CreatePromocodeDto(
+            code="FOREVER",
+            reward_type=PromocodeRewardType.SUBSCRIPTION,
+            reward_plan_id=plan.id,
+            reward_duration_days=0,
+        ),
+    )
+    use_case = _activate_use_case(
+        promocode_repository,
+        subscription_repository,
+        user_repository,
+        remnawave_sdk,
+        uow,
+        event_publisher,
+    )
+
+    await use_case(actor, ActivatePromocodeDto(code="FOREVER"))
+
+    active = await subscription_repository.get_active_by_user(actor.id)
+    assert active[0].is_unlimited
+
+
 async def test_activate_subscription_reward_for_unavailable_plan_does_not_spend_the_code(
     promocode_repository: PromocodeRepository,
     subscription_repository: SubscriptionRepository,

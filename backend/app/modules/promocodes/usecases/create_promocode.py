@@ -80,10 +80,11 @@ class CreatePromocodeUseCase(UseCase[CreatePromocodeDto, PromocodeDto]):
             if (
                 data.reward_plan_id is None
                 or data.reward_duration_days is None
-                or data.reward_duration_days < 1
+                # 0 grants an unlimited subscription
+                or data.reward_duration_days < 0
             ):
                 raise ValidationError(
-                    "reward_plan_id and a positive reward_duration_days are required "
+                    "reward_plan_id and a reward_duration_days of 0 or more are required "
                     "for reward type 'SUBSCRIPTION'",
                     code=ErrorCode.PROMOCODE_REWARD_PLAN_REQUIRED,
                 )

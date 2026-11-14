@@ -110,7 +110,8 @@ class UpdateSubscriptionSquadsRequest(BaseModel):
 class GrantSubscriptionRequest(BaseModel):
     user_id: int
     plan_id: int
-    duration_days: int = Field(ge=1, le=36500)
+    # 0 is unlimited
+    duration_days: int = Field(ge=0, le=36500)
 
 
 class ChangeSubscriptionPlanRequest(BaseModel):

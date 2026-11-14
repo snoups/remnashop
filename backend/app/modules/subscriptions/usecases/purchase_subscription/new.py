@@ -1,5 +1,4 @@
 from contextlib import suppress
-from datetime import timedelta
 
 from loguru import logger
 from remnapy import RemnawaveSDK
@@ -26,6 +25,7 @@ from app.modules.subscriptions.panel import (
     subscription_row,
 )
 from app.modules.subscriptions.repository import SubscriptionRepository
+from app.modules.subscriptions.unlimited import expiry_after
 from app.modules.users import UserRepository
 
 
@@ -89,7 +89,7 @@ class NewPurchase:
             )
 
         plan = data.plan_snapshot
-        expire_at = datetime_now() + timedelta(days=data.duration_days)
+        expire_at = expiry_after(datetime_now(), data.duration_days)
         panel_user = await self._remnawave_sdk.users.create_user(
             new_panel_user(buyer, plan, expire_at, self._prefix)
         )
@@ -178,7 +178,7 @@ class NewPurchase:
         # create_user/delete_user here. Enabled too: a trial paused or disabled
         # is still replaced by a subscription the customer has paid for
         plan = data.plan_snapshot
-        expire_at = datetime_now() + timedelta(days=data.duration_days)
+        expire_at = expiry_after(datetime_now(), data.duration_days)
         panel_user = await self._remnawave_sdk.users.update_user(
             configure_for_plan(trial.remnawave_user_id, plan, expire_at, enable=True)
         )

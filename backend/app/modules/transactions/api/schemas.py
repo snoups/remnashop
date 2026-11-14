@@ -20,7 +20,7 @@ from app.modules.transactions.dto import TransactionDto
 
 class CreateCheckoutRequest(BaseModel):
     plan_id: int
-    duration_days: int = Field(gt=0)
+    duration_days: int = Field(ge=0)
     currency: Currency
     purchase_type: PurchaseType
     gateway_type: PaymentGatewayType
@@ -41,7 +41,7 @@ class CheckoutResponse(BaseModel):
 
 class QuoteCheckoutRequest(BaseModel):
     plan_id: int
-    duration_days: int = Field(gt=0)
+    duration_days: int = Field(ge=0)
     currency: Currency
     plan_code: Optional[str] = Field(default=None, max_length=64)
     renew_subscription_id: Optional[int] = None
