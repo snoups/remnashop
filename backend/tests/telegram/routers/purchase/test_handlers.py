@@ -124,8 +124,35 @@ async def test_renew_of_a_plan_gone_from_the_catalog_says_it_cant_be_renewed() -
 
     assert (
         await start_purchase_steps(manager, catalog_dto, subscriptions)
-        == "ntf-purchase.renew-plan-unavailable"
+        == "ntf-purchase.plan-unavailable"
     )
+
+
+async def test_renew_without_a_plan_to_renew_into_opens_the_plan_change() -> None:
+    manager = _manager(start_data={"purchase_type": "RENEW", SELECTED_SUBSCRIPTION_KEY: 3})
+    list_active_plans = AsyncMock(
+        side_effect=[
+            PlanCatalogDto(plans=[], anchor_currency=Currency.RUB),
+            PlanCatalogDto(plans=[_plan(id=11)], anchor_currency=Currency.RUB),
+        ]
+    )
+
+    await on_purchase_start.__dishka_orig_func__(
+        manager.start_data,
+        manager,
+        list_active_plans=list_active_plans,
+        list_own_subscriptions=AsyncMock(return_value=[_target(0)]),
+        list_payment_methods=AsyncMock(),
+        quote_checkout=_quote_checkout(),
+        get_access_settings=_access(),
+        join_payment_waitlist=AsyncMock(),
+        i18n=_i18n(),
+    )
+
+    assert list_active_plans.await_args_list[1].args[1].renew_subscription_id is None
+    assert manager.dialog_data["purchase_type"] == "CHANGE"
+    assert manager.dialog_data["current_plan_id"] == 0
+    manager.switch_to.assert_awaited_once_with(Purchase.PLAN)
 
 
 async def test_renew_of_a_gone_subscription_answers_an_alert() -> None:
@@ -570,7 +597,6 @@ def test_catalog_binds_the_purchase_actions() -> None:
 _NOTIFICATION_ATTRIBUTES = (
     "stars-rejected",
     "plan-unavailable",
-    "renew-plan-unavailable",
     "limit-reached",
     "method-unavailable",
     "discount-used",
