@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 from uuid import uuid4
@@ -13,6 +13,7 @@ from app.core.enums import Currency, PlanType, PurchaseType
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.core.ports import EventPublisher
+from app.core.utils.time import datetime_now
 from app.modules.plans.dto import (
     CreatePlanDto,
     PlanDto,
@@ -284,3 +285,102 @@ def test_proration_credit_of_unlimited_is_zero() -> None:
     )
 
     assert credit == Decimal("0")
+
+
+async def test_change_to_unlimited_sets_2099_without_day_credit(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    buyer = await user_repository.create(CreateUserDto(name="change", telegram_id=91006))
+    month_plan = await _plan(plan_repository, "change-from-month")
+    forever_plan = await _plan(plan_repository, "change-to-forever")
+    use_case = _use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    month = await _buy(use_case, buyer, month_plan, days=30, paid="500")
+
+    changed = await _buy(
+        use_case,
+        buyer,
+        forever_plan,
+        days=0,
+        paid="5000",
+        purchase_type=PurchaseType.CHANGE,
+        target_subscription_id=month.id,
+    )
+
+    assert changed.is_unlimited
+    assert _panel_expiry(remnawave_store, changed).year == 2099
+    assert changed.plan_snapshot.credit_paid == Decimal("5000")
+    assert changed.plan_snapshot.credit_days == 0
+
+
+async def test_change_unlimited_to_unlimited_accumulates_credit_paid(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    # the first purchase's snapshot carries no credit fields, like a migrated one
+    buyer = await user_repository.create(CreateUserDto(name="upgrade", telegram_id=91007))
+    standard = await _plan(plan_repository, "standard-forever")
+    premium = await _plan(plan_repository, "premium-forever")
+    use_case = _use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    forever = await _buy(use_case, buyer, standard, days=0, paid="3000")
+
+    changed = await _buy(
+        use_case,
+        buyer,
+        premium,
+        days=0,
+        paid="2000",
+        purchase_type=PurchaseType.CHANGE,
+        target_subscription_id=forever.id,
+    )
+
+    assert changed.is_unlimited
+    assert changed.plan_snapshot.credit_paid == Decimal("5000")
+    assert changed.plan_snapshot.credit_days == 0
+
+
+async def test_change_unlimited_to_finite_has_zero_credit(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    buyer = await user_repository.create(CreateUserDto(name="down", telegram_id=91008))
+    forever_plan = await _plan(plan_repository, "down-from-forever")
+    month_plan = await _plan(plan_repository, "down-to-month")
+    use_case = _use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    forever = await _buy(use_case, buyer, forever_plan, days=0, paid="5000")
+
+    changed = await _buy(
+        use_case,
+        buyer,
+        month_plan,
+        days=30,
+        paid="500",
+        purchase_type=PurchaseType.CHANGE,
+        target_subscription_id=forever.id,
+    )
+
+    assert not changed.is_unlimited
+    assert changed.expire_at - datetime_now() < timedelta(days=30, minutes=1)
+    assert changed.plan_snapshot.credit_days == 30

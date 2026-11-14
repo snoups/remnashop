@@ -49,7 +49,10 @@ from tests.modules.transactions.test_usecases import (
     _checkout_dto,
     _FakeFactory,
     _FakeGateway,
+    _make_unlimited,
     _promocode,
+    _seed_subscription,
+    _unlimited_plan,
 )
 
 
@@ -68,6 +71,7 @@ def pricer(
         pricing_repository,
         uow,
         promocode_repository,
+        SubscriptionRepository(plan_repository.session),
     )
 
 
@@ -261,3 +265,30 @@ async def test_checkout_refuses_a_total_the_customer_was_not_shown(
     result = await checkout_use_case(actor, shown)
     order = await transaction_repository.get_by_id(result.order_id)
     assert order.final_price == quote.final_price
+
+
+async def test_quote_of_a_change_between_unlimited_plans_shows_the_credit(
+    quote_use_case: QuoteCheckoutUseCase,
+    actor: UserDto,
+    plan: PlanDto,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+) -> None:
+    subscription_id = await _seed_subscription(
+        subscription_repository, user_id=actor.id, remnawave_user_id=820_301, plan_id=plan.id
+    )
+    await _make_unlimited(subscription_repository, subscription_id)
+    premium = await _unlimited_plan(plan_repository, "quote-premium-forever", "5000")
+
+    quote = await quote_use_case(
+        actor,
+        QuoteCheckoutDto(
+            plan_id=premium.id,
+            duration_days=0,
+            currency=Currency.RUB,
+            change_subscription_id=subscription_id,
+        ),
+    )
+
+    assert quote.change_credit == Decimal("500.00")
+    assert quote.final_price == Decimal("4500")

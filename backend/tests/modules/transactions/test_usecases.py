@@ -170,6 +170,7 @@ def create_checkout_use_case(
             pricing_repository,
             uow,
             promocode_repository,
+            subscription_repository,
         ),
         user_repository,
         gateway_repository,
@@ -406,6 +407,7 @@ async def test_concurrent_free_checkouts_stop_at_the_cap(
                 PricingRepository(session),
                 uow,
                 PromocodeRepository(session),
+                SubscriptionRepository(session),
             ),
             UserRepository(session),
             GatewayRepository(session),
@@ -1832,3 +1834,114 @@ async def test_a_checkout_leaves_an_order_it_does_not_own_alone(
     assert (await transaction_repository.get_by_id(theirs.order_id)).status is (
         TransactionStatus.PENDING
     )
+
+
+async def _unlimited_plan(plan_repository: PlanRepository, code: str, price: str) -> PlanDto:
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code=code, name=code, type=PlanType.BOTH, traffic_limit=100, device_limit=3
+        )
+    )
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=created.id,
+            durations=[SetPlanDurationDto(days=0, order_index=0, base_price=Decimal(price))],
+        )
+    )
+    await plan_repository.update_squads(
+        UpdatePlanSquadsDto(plan_id=created.id, internal_squads=[uuid4()], external_squad=None)
+    )
+    return await plan_repository.update(UpdatePlanDto(plan_id=created.id, is_active=True))
+
+
+async def _make_unlimited(
+    subscription_repository: SubscriptionRepository, subscription_id: int
+) -> None:
+    await subscription_repository.session.execute(
+        update(Subscription)
+        .where(Subscription.id == subscription_id)
+        .values(expire_at=datetime(2099, 1, 1, tzinfo=timezone.utc))
+    )
+
+
+def _change_to(plan: PlanDto, subscription_id: int) -> CreateCheckoutDto:
+    return CreateCheckoutDto(
+        channel=PurchaseChannel.CABINET,
+        plan_id=plan.id,
+        duration_days=0,
+        currency=Currency.RUB,
+        purchase_type=PurchaseType.CHANGE,
+        target_subscription_id=subscription_id,
+        gateway_type=PaymentGatewayType.YOOKASSA,
+    )
+
+
+async def test_checkout_unlimited_to_unlimited_stores_credit(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    transaction_repository: TransactionRepository,
+) -> None:
+    # the seeded subscription was paid 500
+    subscription_id = await _seed_subscription(
+        subscription_repository, user_id=actor.id, remnawave_user_id=820_201, plan_id=plan.id
+    )
+    await _make_unlimited(subscription_repository, subscription_id)
+    premium = await _unlimited_plan(plan_repository, "premium-forever", "5000")
+
+    result = await create_checkout_use_case(actor, _change_to(premium, subscription_id))
+
+    order = await transaction_repository.get_by_id(result.order_id)
+    assert order.change_credit == Decimal("500.00")
+    assert order.base_price == Decimal("5000.00")
+    assert order.final_price == Decimal("4500")
+
+
+async def test_checkout_finite_to_unlimited_has_no_credit(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    actor: UserDto,
+    plan: PlanDto,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    transaction_repository: TransactionRepository,
+) -> None:
+    subscription_id = await _seed_subscription(
+        subscription_repository, user_id=actor.id, remnawave_user_id=820_202, plan_id=plan.id
+    )
+    premium = await _unlimited_plan(plan_repository, "premium-forever-2", "5000")
+
+    result = await create_checkout_use_case(actor, _change_to(premium, subscription_id))
+
+    order = await transaction_repository.get_by_id(result.order_id)
+    assert order.change_credit == Decimal("0")
+    assert order.final_price == Decimal("5000.00")
+
+
+async def test_checkout_unlimited_downgrade_is_free_order(
+    create_checkout_use_case: CreateCheckoutUseCase,
+    _active_yookassa: None,
+    fake_gateway: _FakeGateway,
+    purchase_dispatch: RecordingDispatch,
+    actor: UserDto,
+    plan: PlanDto,
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    transaction_repository: TransactionRepository,
+) -> None:
+    subscription_id = await _seed_subscription(
+        subscription_repository, user_id=actor.id, remnawave_user_id=820_203, plan_id=plan.id
+    )
+    await _make_unlimited(subscription_repository, subscription_id)
+    basic = await _unlimited_plan(plan_repository, "basic-forever", "300")
+
+    result = await create_checkout_use_case(actor, _change_to(basic, subscription_id))
+
+    order = await transaction_repository.get_by_id(result.order_id)
+    assert order.final_price == Decimal("0")
+    assert order.status is TransactionStatus.PAID
+    assert fake_gateway.create_payment_calls == []
+    assert len(purchase_dispatch.messages) == 1

@@ -1,18 +1,20 @@
 import hmac
+from decimal import Decimal
 from typing import Optional
 
 from loguru import logger
 
+from app.core.constants import ZERO_AMOUNT
 from app.core.db.uow import UnitOfWork
 from app.core.enums import Currency, PlanAvailability
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import NotFoundError
 from app.modules.plans import PlanDto, PlanRepository
 from app.modules.pricing import PricingRepository
-from app.modules.subscriptions import PurchaseEligibility
+from app.modules.subscriptions import PurchaseEligibility, SubscriptionRepository, get_owned_target
 from app.modules.transactions.dto import PriceQuote
 from app.modules.transactions.ports import PromocodeLiveness
-from app.modules.transactions.pricing import quote_price
+from app.modules.transactions.pricing import change_credit_for, quote_price
 from app.modules.users import UserDto, UserRepository
 
 
@@ -36,6 +38,7 @@ class CheckoutPricer:
         pricing_repository: PricingRepository,
         uow: UnitOfWork,
         promocode_liveness: PromocodeLiveness,
+        subscription_repository: SubscriptionRepository,
     ) -> None:
         self._plan_repository = plan_repository
         self._user_repository = user_repository
@@ -43,6 +46,7 @@ class CheckoutPricer:
         self._pricing_repository = pricing_repository
         self._uow = uow
         self._promocode_liveness = promocode_liveness
+        self._subscription_repository = subscription_repository
 
     async def load_purchasable_plan(
         self,
@@ -91,9 +95,33 @@ class CheckoutPricer:
         logger.info(f"{user.log} Dropped discounts from ended promocodes {sorted(dead)}")
         return refreshed
 
+    async def change_credit(
+        self,
+        user_id: int,
+        target_subscription_id: Optional[int],
+        duration_days: int,
+        currency: Currency,
+    ) -> Decimal:
+        if target_subscription_id is None or duration_days != 0:
+            return ZERO_AMOUNT
+        async with self._uow:
+            target = await get_owned_target(
+                self._subscription_repository, target_subscription_id, user_id
+            )
+            rates = await self._pricing_repository.get_rate_table()
+        return change_credit_for(target, duration_days, currency, rates)
+
     async def quote(
-        self, plan: PlanDto, duration_days: int, currency: Currency, user: UserDto
+        self,
+        plan: PlanDto,
+        duration_days: int,
+        currency: Currency,
+        user: UserDto,
+        *,
+        change_credit: Decimal = ZERO_AMOUNT,
     ) -> PriceQuote:
         async with self._uow:
             rates = await self._pricing_repository.get_rate_table()
-            return quote_price(plan, duration_days, currency, user, rates)
+            return quote_price(
+                plan, duration_days, currency, user, rates, change_credit=change_credit
+            )

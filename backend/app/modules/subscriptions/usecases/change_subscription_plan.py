@@ -57,7 +57,9 @@ class ChangeSubscriptionPlanUseCase(UseCase[ChangeSubscriptionPlanDto, Subscript
                 )
             plan = await self._plan_repository.get_by_id(data.plan_id)
 
-        if data.duration_days is None:
+        if data.duration_days is None and old.is_unlimited:
+            duration_days = 0
+        elif data.duration_days is None:
             remaining_days = (old.expire_at - datetime_now()).total_seconds() / TIME_1D
             duration_days = max(1, math.ceil(remaining_days))
         else:

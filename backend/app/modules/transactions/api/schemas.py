@@ -45,10 +45,13 @@ class QuoteCheckoutRequest(BaseModel):
     currency: Currency
     plan_code: Optional[str] = Field(default=None, max_length=64)
     renew_subscription_id: Optional[int] = None
+    # a CHANGE: the subscription being changed, whose payment an unlimited one credits
+    change_subscription_id: Optional[int] = None
 
 
 class CheckoutQuoteResponse(BaseModel):
     base_price: Decimal
+    change_credit: Decimal
     plan_discount_percent: int
     discount_percent: int
     discount_source: DiscountSource
@@ -85,6 +88,7 @@ class TransactionResponse(BaseModel):
     discount_source: DiscountSource
     plan_discount_percent: int
     final_price: Decimal
+    change_credit: Decimal
     customer_email: Optional[str]
     idempotency_key: str
     is_test: bool
@@ -182,6 +186,7 @@ class OwnTransactionResponse(BaseModel):
     final_price: Decimal
     # what the discounts were taken off, and which: the cabinet shows the saving
     base_price: Decimal
+    change_credit: Decimal
     plan_discount_percent: int
     discount_percent: int
     discount_source: DiscountSource
@@ -203,6 +208,7 @@ class OwnTransactionResponse(BaseModel):
             status=order.status,
             final_price=order.final_price,
             base_price=order.base_price,
+            change_credit=order.change_credit,
             plan_discount_percent=order.plan_discount_percent,
             discount_percent=order.discount_percent,
             discount_source=order.discount_source,

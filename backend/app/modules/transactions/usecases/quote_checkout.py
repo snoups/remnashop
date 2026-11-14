@@ -22,4 +22,9 @@ class QuoteCheckoutUseCase(UseCase[QuoteCheckoutDto, PriceQuote, UserDto]):
                 actor.id, data.plan_id, data.plan_code, data.renew_subscription_id
             )
         user = await self._pricer.drop_dead_promocode_discounts(user)
-        return await self._pricer.quote(plan, data.duration_days, data.currency, user)
+        change_credit = await self._pricer.change_credit(
+            actor.id, data.change_subscription_id, data.duration_days, data.currency
+        )
+        return await self._pricer.quote(
+            plan, data.duration_days, data.currency, user, change_credit=change_credit
+        )

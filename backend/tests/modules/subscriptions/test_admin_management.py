@@ -279,6 +279,42 @@ async def test_change_plan_keeping_expiry(
     assert "SubscriptionChangedEvent" not in events
 
 
+async def test_admin_change_keeping_unlimited_expiry_snapshots_zero_days(
+    grant_use_case: GrantSubscriptionUseCase,
+    change_plan_use_case: ChangeSubscriptionPlanUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+) -> None:
+    old = await _granted(grant_use_case, user_repository, plan_repository, 9410, "keep-forever", 0)
+    new_plan = await _plan(plan_repository, "keep-forever-b")
+
+    changed = await change_plan_use_case(
+        OWNER,
+        ChangeSubscriptionPlanDto(subscription_id=old.id, plan_id=new_plan.id, duration_days=None),
+    )
+
+    assert changed.is_unlimited
+    assert changed.expire_at == old.expire_at
+    assert changed.plan_snapshot.duration_days == 0
+
+
+async def test_admin_change_to_unlimited_duration(
+    grant_use_case: GrantSubscriptionUseCase,
+    change_plan_use_case: ChangeSubscriptionPlanUseCase,
+    user_repository: UserRepository,
+    plan_repository: PlanRepository,
+) -> None:
+    old = await _granted(grant_use_case, user_repository, plan_repository, 9411, "to-forever")
+    new_plan = await _plan(plan_repository, "to-forever-b")
+
+    changed = await change_plan_use_case(
+        OWNER,
+        ChangeSubscriptionPlanDto(subscription_id=old.id, plan_id=new_plan.id, duration_days=0),
+    )
+
+    assert changed.is_unlimited
+
+
 async def test_change_plan_with_new_duration(
     grant_use_case: GrantSubscriptionUseCase,
     change_plan_use_case: ChangeSubscriptionPlanUseCase,

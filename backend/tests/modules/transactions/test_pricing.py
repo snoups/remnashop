@@ -358,3 +358,35 @@ def test_quote_price_free_trial_stays_free_and_spends_no_discount() -> None:
     assert quote.final_price == Decimal("0")
     assert quote.discount_source is DiscountSource.NONE
     assert quote.discount_promocode_id is None
+
+
+def test_quote_subtracts_change_credit_before_discounts() -> None:
+    plan = _plan(base_price=Decimal("5000"), days=0)
+
+    quote = quote_price(
+        plan, 0, Currency.RUB, _user(loyalty_discount=10), _rates(), change_credit=Decimal("3000")
+    )
+
+    assert quote.base_price == Decimal("5000")
+    assert quote.change_credit == Decimal("3000")
+    assert quote.final_price == Decimal("1800")
+
+
+def test_quote_change_credit_above_price_is_free() -> None:
+    plan = _plan(base_price=Decimal("3000"), days=0)
+
+    quote = quote_price(
+        plan, 0, Currency.RUB, _user(purchase_discount=10), _rates(), change_credit=Decimal("5000")
+    )
+
+    assert quote.final_price == Decimal("0")
+    # a one-shot discount isn't spent on a free change
+    assert quote.discount_source is DiscountSource.NONE
+
+
+def test_quote_change_credit_rounds_the_rest_to_the_currency() -> None:
+    plan = _plan(base_price=Decimal("5000"), days=0)
+
+    quote = quote_price(plan, 0, Currency.RUB, _user(), _rates(), change_credit=Decimal("3000.4"))
+
+    assert quote.final_price == Decimal("2000")

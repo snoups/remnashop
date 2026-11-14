@@ -90,10 +90,12 @@ async def quote_checkout(
             currency=payload.currency,
             plan_code=payload.plan_code,
             renew_subscription_id=payload.renew_subscription_id,
+            change_subscription_id=payload.change_subscription_id,
         ),
     )
     return CheckoutQuoteResponse(
         base_price=quote.base_price,
+        change_credit=quote.change_credit,
         plan_discount_percent=quote.plan_discount_percent,
         discount_percent=quote.discount_percent,
         discount_source=quote.discount_source,

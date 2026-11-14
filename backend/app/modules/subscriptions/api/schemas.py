@@ -116,7 +116,8 @@ class GrantSubscriptionRequest(BaseModel):
 
 class ChangeSubscriptionPlanRequest(BaseModel):
     plan_id: int
-    duration_days: Optional[int] = Field(default=None, ge=1, le=36500)
+    # 0 is unlimited, none keeps the current expiry
+    duration_days: Optional[int] = Field(default=None, ge=0, le=36500)
 
 
 class DeviceResponse(BaseModel):
