@@ -21,6 +21,7 @@ import { DEFAULT_PAGE_SIZE, getTransactionSummary, hasDiscount, totalDiscountPer
 import { userName } from "@entities/user/display";
 import { usePermissions } from "@entities/user/use-current-user";
 import { TransactionDetailsDialog } from "@features/transaction-details/TransactionDetailsDialog";
+import { formatDuration } from "@shared/lib/duration";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
 import { ALL_TIME_TREND_DAYS, DAY_MS, PERIOD_DAYS, type PeriodDays } from "@shared/lib/period";
 import { LoadGate, LoadGateHold } from "@shared/lib/load-gate";
@@ -352,7 +353,7 @@ export function TransactionsPage() {
                                       <span className="truncate text-sm font-medium text-foreground">
                                         {order.plan_snapshot.name}
                                         {" · "}
-                                        {t("plans.daysShort", { count: order.duration_days })}
+                                        {formatDuration(order.duration_days, t)}
                                       </span>
                                       <span className="shrink-0 font-mono text-xs text-muted-foreground">
                                         #{order.id}

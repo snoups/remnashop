@@ -61,6 +61,7 @@ import { SubscriptionField } from "@features/subscription-edit/SubscriptionField
 import { useSquadName } from "@features/subscription-edit/use-squad-name";
 import { useSubscriptionActions } from "@features/subscription-edit/use-subscription-actions";
 import { getErrorMessage } from "@shared/api/http";
+import { isUnlimitedExpiry, unlimitedExpiry } from "@shared/lib/duration";
 import { blockNonIntegerKeys, parseRequiredInt } from "@shared/lib/number-input";
 import { formatBytes, formatMoney } from "@shared/lib/format";
 import { formatDate, formatDateTime } from "@shared/lib/relative-time";
@@ -357,8 +358,12 @@ function SubscriptionParamsView({ subscription }: { subscription: SubscriptionLi
         <SubscriptionField
           icon={CalendarClock}
           label={t("subscriptions.edit.expireAtLabel")}
-          value={formatDateTime(subscription.expire_at, i18n.language)}
-          mono
+          value={
+            isUnlimitedExpiry(subscription.expire_at)
+              ? t("subscriptions.noExpiry")
+              : formatDateTime(subscription.expire_at, i18n.language)
+          }
+          mono={!isUnlimitedExpiry(subscription.expire_at)}
         />
         <SubscriptionField
           icon={CalendarDays}
@@ -474,7 +479,8 @@ function SubscriptionCard({ subscription, used }: { subscription: SubscriptionLi
         ? "warning"
         : "ok";
   const days = daysUntil(subscription.expire_at);
-  const daysTone = days <= 0 ? "error" : days <= EXPIRING_SOON_DAYS ? "warning" : "ok";
+  const unlimited = isUnlimitedExpiry(subscription.expire_at);
+  const daysTone = unlimited ? "ok" : days <= 0 ? "error" : days <= EXPIRING_SOON_DAYS ? "warning" : "ok";
   const devices = subscription.effective_device_limit;
   const limitText = formatBytes(limitBytes, i18n.language);
 
@@ -528,7 +534,13 @@ function SubscriptionCard({ subscription, used }: { subscription: SubscriptionLi
       <div className="mt-1 flex gap-2">
         <CardPill
           label={t("subscriptions.details.daysLeft")}
-          value={days > 0 ? t("subscriptions.duration.days", { count: days }) : t("subscriptions.status.EXPIRED")}
+          value={
+            unlimited
+              ? t("subscriptions.noExpiry")
+              : days > 0
+                ? t("subscriptions.duration.days", { count: days })
+                : t("subscriptions.status.EXPIRED")
+          }
           valueClassName={TEXT_TONE[daysTone]}
         />
         <CardPill
@@ -696,6 +708,10 @@ function SubscriptionParamsForm({
                   {t("subscriptions.edit.plusDays", { days })}
                 </Button>
               ))}
+              {/* the backend reads a 2099 expiry as unlimited */}
+              <Button variant="glass" type="button" onClick={() => setExpireAt(toLocalInput(unlimitedExpiry()))}>
+                {t("subscriptions.noExpiry")}
+              </Button>
             </div>
           </Field>
         </div>

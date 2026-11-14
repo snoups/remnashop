@@ -14,6 +14,7 @@ import { PURCHASE_TYPE_BAR_CLASS } from "@features/user-details/purchase-type";
 import { TransactionDetailsDialog } from "@features/transaction-details/TransactionDetailsDialog";
 import { InvitedUsersPage } from "@features/user-referrals/InvitedUsersList";
 import { ReferralKpis } from "@features/user-referrals/ReferralOverview";
+import { formatDuration, isUnlimitedExpiry } from "@shared/lib/duration";
 import { currencySymbol, formatMoney } from "@shared/lib/format";
 import { usePaginatedList } from "@shared/lib/use-paginated-list";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
@@ -211,7 +212,7 @@ export function TransactionsTab({ userId }: { userId: number }) {
               size="sm"
               glyph={<span className="text-xs font-bold">{symbol}</span>}
               tone={PAYMENT_STATUS_BADGE_TONE[order.status]}
-              label={`${order.plan_snapshot.name} · ${t("plans.daysShort", { count: order.duration_days })}`}
+              label={`${order.plan_snapshot.name} · ${formatDuration(order.duration_days, t)}`}
               description={
                 <>
                   {t(`transactions.purchaseType.${order.purchase_type}`)} · <span className="font-mono">#{order.id}</span> ·{" "}
@@ -291,7 +292,9 @@ export function SubscriptionsTab({ userId }: { userId: number }) {
             >
               {subscription.status !== "DELETED" && (
                 <span className="text-sm tabular-nums text-muted-foreground">
-                  {t("subscriptions.until", { date: formatDate(subscription.expire_at, i18n.language) })}
+                  {isUnlimitedExpiry(subscription.expire_at)
+                    ? t("subscriptions.noExpiry")
+                    : t("subscriptions.until", { date: formatDate(subscription.expire_at, i18n.language) })}
                 </span>
               )}
               <Badge tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]}>

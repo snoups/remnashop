@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { formatLimit, formatTraffic, type SubscriptionListItem } from "@entities/subscriptions/api";
 import { SubscriptionField } from "@features/subscription-edit/SubscriptionField";
 import { useSquadName } from "@features/subscription-edit/use-squad-name";
+import { formatDurationLong } from "@shared/lib/duration";
 import { formatMoney } from "@shared/lib/format";
 import { DialogCard } from "@shared/ui/glass/DialogCard";
 
@@ -29,7 +30,7 @@ export function SubscriptionPlanTab({ subscription }: SubscriptionPlanTabProps) 
         <SubscriptionField
           icon={CalendarDays}
           label={t("subscriptions.plan.duration")}
-          value={t("subscriptions.duration.days", { count: snapshot.duration_days })}
+          value={formatDurationLong(snapshot.duration_days, t)}
         />
         <SubscriptionField icon={Hash} label={t("subscriptions.plan.code")} value={snapshot.public_code} mono />
         {snapshot.credit_paid != null && snapshot.credit_days != null && (

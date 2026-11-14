@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { getPromocodeStats } from "@entities/analytics/api";
 import type { PromocodeRow, PromocodeStats } from "@entities/analytics/api";
 import { PROMOCODE_STATUS_BADGE_TONE } from "@entities/promocodes/display";
+import { formatDuration } from "@shared/lib/duration";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { formatMoney, formatPercent } from "@shared/lib/format";
 import { LoadGateHold } from "@shared/lib/load-gate";
@@ -68,7 +69,7 @@ function Overview({ data }: { data: PromocodeStats }) {
     )
       return `-${row.reward ?? 0}%`;
     if (row.reward_type === "SUBSCRIPTION" && row.reward_duration_days !== null)
-      return `${t("promocodes.rewardTypeShort.SUBSCRIPTION")} · ${t("plans.daysShort", { count: row.reward_duration_days })}`;
+      return `${t("promocodes.rewardTypeShort.SUBSCRIPTION")} · ${formatDuration(row.reward_duration_days, t)}`;
     return t(`promocodes.rewardTypeShort.${row.reward_type}`);
   };
 

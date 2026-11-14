@@ -74,7 +74,8 @@ function targetRows(form: BulkForm, planGroups: PriceBookRow[][]): PriceBookRow[
 
 function ladderDurations(form: BulkForm, planGroups: PriceBookRow[][]): number[] {
   return [...new Set(targetRows(form, planGroups).flat().map((row) => row.days))]
-    .filter((days): days is number => days !== null)
+    // an unlimited duration has no days to price by, the backend leaves it out too
+    .filter((days): days is number => days !== null && days > 0)
     .sort((a, b) => a - b);
 }
 

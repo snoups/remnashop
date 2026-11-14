@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 
 import { apiGet, apiPost, apiPut } from "@shared/api/http";
+import { formatDuration } from "@shared/lib/duration";
 
 // Decimals arrive as strings (pydantic v2's JSON mode) and stay strings, so
 // a round-trip through <input type="number"> loses no precision.
@@ -137,5 +138,5 @@ export function pricingRowLabel(
   row: { name: string; days: number | null },
   t: TFunction,
 ): string {
-  return row.days === null ? row.name : `${row.name} · ${t("plans.daysShort", { count: row.days })}`;
+  return row.days === null ? row.name : `${row.name} · ${formatDuration(row.days, t)}`;
 }

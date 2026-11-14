@@ -10,6 +10,7 @@ import type {
   PromocodeRewardType,
   UpdatePromocodeRequest,
 } from "@entities/promocodes/api";
+import { formatDuration } from "@shared/lib/duration";
 import { endOfDayToIso, isoToLastDay } from "@shared/lib/iso-date";
 import { parseOptionalInt } from "@shared/lib/number-input";
 import type { BadgeTone } from "@shared/ui/Badge";
@@ -81,7 +82,7 @@ export function describeReward(
     case "SUBSCRIPTION": {
       const plan = plans.find((p) => p.id === promo.reward_plan_id);
       const planLabel = plan ? plan.name : t("promocodes.rewardType.SUBSCRIPTION");
-      return `${planLabel} · ${t("plans.daysShort", { count: promo.reward_duration_days ?? 0 })}`;
+      return `${planLabel} · ${formatDuration(promo.reward_duration_days ?? 0, t)}`;
     }
     case "PERSONAL_DISCOUNT":
     case "PURCHASE_DISCOUNT":

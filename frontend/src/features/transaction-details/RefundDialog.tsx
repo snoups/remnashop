@@ -55,7 +55,9 @@ function RefundDialogBody({ order, preview, onConfirm }: RefundDialogProps) {
                 {rollback.available && (
                   <>
                     <p className={hint}>
-                      {t(`transactions.refund.rollback.${order.purchase_type}`, { days: order.duration_days })}
+                      {order.purchase_type === "RENEW" && order.duration_days === 0
+                        ? t("transactions.refund.rollback.RENEW_UNLIMITED")
+                        : t(`transactions.refund.rollback.${order.purchase_type}`, { days: order.duration_days })}
                     </p>
                     {order.purchase_type === "CHANGE" && (
                       <p className={hint}>{t("transactions.refund.changeLosesCredits")}</p>

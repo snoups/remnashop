@@ -20,6 +20,7 @@ import {
 import { usePermissions } from "@entities/user/use-current-user";
 import { PanelSyncButtons } from "@features/panel-sync/PanelSyncButtons";
 import { SubscriptionEditDialog } from "@features/subscription-edit/SubscriptionEditDialog";
+import { isUnlimitedExpiry } from "@shared/lib/duration";
 import { useEntityChanged } from "@shared/lib/entity-dialogs";
 import { formatPercent } from "@shared/lib/format";
 import { useAsyncResource } from "@shared/lib/use-async-resource";
@@ -71,6 +72,7 @@ const GROUP_DOT_CLASSNAME: Record<ExpiryGroup, string> = {
 function expiryGroup(subscription: SubscriptionListItem): ExpiryGroup {
   const days = daysUntil(subscription.expire_at);
   if (INACTIVE_STATUSES.has(subscription.status) || days < 0) return "inactive";
+  if (isUnlimitedExpiry(subscription.expire_at)) return "active";
   return days <= EXPIRING_SOON_DAYS ? "soon" : "active";
 }
 
@@ -301,12 +303,18 @@ export function SubscriptionsPage() {
                                 {formatLimit(subscription.effective_device_limit, unlimitedLabel)}
                               </span>
                               <span className="tabular-nums">
-                                <span className="block text-sm text-foreground">
-                                  {formatDate(subscription.expire_at, i18n.language)}
-                                </span>
-                                <span className={`block text-xs ${expiryToneClassName(days)}`}>
-                                  {relativeTime.format(days, "day")}
-                                </span>
+                                {isUnlimitedExpiry(subscription.expire_at) ? (
+                                  <span className="block text-sm text-foreground">{t("subscriptions.noExpiry")}</span>
+                                ) : (
+                                  <>
+                                    <span className="block text-sm text-foreground">
+                                      {formatDate(subscription.expire_at, i18n.language)}
+                                    </span>
+                                    <span className={`block text-xs ${expiryToneClassName(days)}`}>
+                                      {relativeTime.format(days, "day")}
+                                    </span>
+                                  </>
+                                )}
                               </span>
                               <span>
                                 <Badge tone={SUBSCRIPTION_STATUS_BADGE_TONE[subscription.status]}>

@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 
 import type { RecentPayment, RevenueToday } from "@entities/overview/api";
 import { useCanOpenUsers } from "@features/open-user/openable-user";
+import { formatDuration } from "@shared/lib/duration";
 import { useOpenEntity } from "@shared/lib/entity-dialogs";
 import { currencySymbol, formatMoney } from "@shared/lib/format";
 import { formatTime } from "@shared/lib/relative-time";
@@ -71,7 +72,7 @@ export function RecentPaymentsCard({
                   <span className="truncate text-sm font-medium text-foreground">
                     {payment.plan_name}
                     {" · "}
-                    {t("plans.daysShort", { count: payment.duration_days })}
+                    {formatDuration(payment.duration_days, t)}
                   </span>
                   <span className="shrink-0 font-mono text-xs text-muted-foreground">#{payment.transaction_id}</span>
                 </span>

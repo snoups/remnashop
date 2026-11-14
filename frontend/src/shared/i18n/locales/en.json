@@ -3289,6 +3289,7 @@
       "rewardPlanPlaceholder": "Select a plan",
       "rewardPlanEmpty": "No plans",
       "rewardDurationDaysLabel": "Duration",
+      "rewardDurationUnlimitedHint": "0 gives the subscription for good",
       "saved": "Promocode created.",
       "error": "Failed to create the promocode.",
       "daysSuffix": "days",
@@ -3393,6 +3394,7 @@
     "perDays_one": "/ {{count}} day",
     "perDays_other": "/ {{count}} days",
     "daysShort": "{{count, number}}d",
+    "forever": "Forever",
     "devices_one": "{{count}} device",
     "devices_other": "{{count}} devices",
     "create": {
@@ -3561,6 +3563,7 @@
       "rollback": {
         "NEW": "The subscription from this purchase is deleted.",
         "RENEW": "The subscription loses the {{days}} days this renewal added.",
+        "RENEW_UNLIMITED": "The subscription goes back to the end date it had before this renewal made it unlimited.",
         "CHANGE": "The previous plan comes back; the new one is deleted."
       },
       "changeLosesCredits": "Days, add-ons and edits made after the change are lost.",
@@ -3630,6 +3633,7 @@
       "notIssued": "Not issued yet",
       "externalPaymentId": "External payment ID",
       "discount": "{{percent}}% off · {{source}}",
+      "changeCredit": "credit {{amount}}",
       "planDiscount": "{{percent}}% off · plan",
       "customerEmail": "Receipt email",
       "idempotencyKey": "Idempotency key",
@@ -3751,11 +3755,13 @@
       "done": "Subscription granted.",
       "error": "Failed to grant the subscription."
     },
+    "noExpiry": "No end date",
     "duration": {
       "days_one": "{{count}} day",
       "days_other": "{{count}} days",
       "custom": "Custom duration",
       "customLabel": "Days",
+      "keepUnlimited": "Keep current (no end date)",
       "keep": "Keep current (until {{date}})"
     },
     "plan": {
