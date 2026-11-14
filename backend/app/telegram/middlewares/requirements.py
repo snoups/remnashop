@@ -5,7 +5,6 @@ from aiogram.enums import ParseMode
 from aiogram.exceptions import TelegramAPIError, TelegramNetworkError
 from aiogram.types import (
     CallbackQuery,
-    InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
     TelegramObject,
@@ -178,15 +177,13 @@ def channel_keyboard(
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
-                InlineKeyboardButton(
-                    text=label_with_icon(runner, "btn-requirements.subscribe"),
-                    url=requirements.channel_url,
+                label_with_icon(runner, "btn-requirements.subscribe").inline_button(
+                    url=requirements.channel_url
                 )
             ],
             [
-                InlineKeyboardButton(
-                    text=label_with_icon(runner, "btn-requirements.check"),
-                    callback_data=CHANNEL_CHECK_CALLBACK,
+                label_with_icon(runner, "btn-requirements.check").inline_button(
+                    callback_data=CHANNEL_CHECK_CALLBACK
                 )
             ],
         ]

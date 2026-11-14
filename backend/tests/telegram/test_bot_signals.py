@@ -101,6 +101,25 @@ async def test_dialogs_change_picks_up_texts_seeded_with_it() -> None:
     assert hub.get_translator_by_locale("en").get("msg-dialog-custom-x") == "Offer"
 
 
+async def test_dialogs_change_replaces_an_edited_button_icon() -> None:
+    hub = build_translator_hub(
+        [Locale.EN],
+        {Locale.EN: "btn-x =\n    .cancel = Cancel\n    .cancel-icon = ❌\n"},
+        Locale.EN,
+    )
+
+    async def load() -> TranslatorHub:
+        return build_translator_hub(
+            [Locale.EN],
+            {Locale.EN: "btn-x =\n    .cancel = Cancel\n    .cancel-icon = 🔙\n"},
+            Locale.EN,
+        )
+
+    handlers = live_update_handlers(_SpyCache(), hub, load)
+    await handlers[DIALOG_CONFIG_CHANGED_CHANNEL]("")
+    assert hub.get_translator_by_locale("en").get("btn-x.cancel-icon") == "🔙"
+
+
 class _RedisDownOnce:
     """Fails the first subscription the way a Redis restart does."""
 

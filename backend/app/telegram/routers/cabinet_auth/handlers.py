@@ -2,7 +2,7 @@ from typing import Final, Optional
 
 from aiogram import F, Router
 from aiogram.filters import CommandStart
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import InlineKeyboardMarkup, Message
 from dishka import FromDishka
 from fluentogram import TranslatorHub
 from loguru import logger
@@ -61,11 +61,7 @@ async def on_start_webauth(
         runner.get(f"ntf-{prefix}.link"),
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text=label_with_icon(runner, f"btn-{prefix}.open"), url=link.url
-                    )
-                ]
+                [label_with_icon(runner, f"btn-{prefix}.open").inline_button(url=link.url)]
             ]
         ),
     )

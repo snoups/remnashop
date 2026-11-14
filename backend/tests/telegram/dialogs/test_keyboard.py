@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import AppConfig
 from app.core.di.providers import get_core_providers
-from app.core.enums import ButtonLinkType, DialogFlow
+from app.core.enums import ButtonLinkType, ButtonStyleKind, DialogFlow
 from app.modules.dialogs import catalog
 from app.modules.dialogs.dto import UpdateDialogWindowDto
 from app.modules.dialogs.repository import DialogRepository
@@ -597,6 +597,29 @@ async def test_render_keyboard_opens_a_web_app_over_https_only(url: str, rendere
     assert isinstance(button, InlineKeyboardButton)
     assert button.url is None
     assert button.web_app is not None and button.web_app.url == url
+
+
+@pytest.mark.parametrize("link_type", [ButtonLinkType.URL, ButtonLinkType.WEB_APP])
+async def test_render_keyboard_keeps_the_style_of_a_link_button(link_type: ButtonLinkType) -> None:
+    widget = ConfigKeyboard(window_key="menu.main")
+    data = {
+        "buttons": [
+            [
+                {
+                    "id": 1,
+                    "text": "Support",
+                    "style": ButtonStyleKind.DANGER,
+                    "icon_custom_emoji_id": None,
+                    "link_type": link_type,
+                    "action_key": None,
+                    "target_window_key": None,
+                    "url_value": "https://example.com",
+                }
+            ]
+        ]
+    }
+    keyboard = await widget._render_keyboard(data, MagicMock())
+    assert keyboard[0][0].style == ButtonStyleKind.DANGER
 
 
 async def test_render_keyboard_opens_the_chat_picker_for_an_inline_action() -> None:

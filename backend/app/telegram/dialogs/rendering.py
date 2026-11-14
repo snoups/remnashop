@@ -1,8 +1,12 @@
 import html
 import re
+from dataclasses import dataclass
 from typing import Any, Final, Optional, TypeVar
 from urllib.parse import quote
 
+from aiogram.types import InlineKeyboardButton
+from aiogram_dialog.api.protocols import DialogManager
+from aiogram_dialog.widgets.style import BaseStyle
 from fluentogram import TranslatorRunner
 from fluentogram.exceptions import KeyNotFoundError
 from loguru import logger
@@ -146,13 +150,55 @@ def resolve_variable_kwargs(getter_data: dict[str, Any]) -> dict[str, object]:
     return {key: catalog.get_variable(key)(getter_data) for key in catalog.variable_keys()}
 
 
-def label_with_icon(runner: TranslatorRunner, text_key: str, **kwargs: Any) -> str:
+@dataclass(frozen=True, slots=True)
+class ButtonLabel:
+    """Formats as its text, so `Format("{x}")` takes it as is and the dialog
+    button sends the premium icon through `style=LabelIcon("x")`."""
+
+    text: str
+    icon_custom_emoji_id: Optional[str]
+
+    def __str__(self) -> str:
+        return self.text
+
+    def inline_button(
+        self, *, url: Optional[str] = None, callback_data: Optional[str] = None
+    ) -> InlineKeyboardButton:
+        return InlineKeyboardButton(
+            text=self.text,
+            url=url,
+            callback_data=callback_data,
+            icon_custom_emoji_id=self.icon_custom_emoji_id,
+        )
+
+
+class LabelIcon(BaseStyle):
+    """The premium icon of the ButtonLabel at `path` in the getter data."""
+
+    def __init__(self, *path: str) -> None:
+        super().__init__()
+        self._path = path
+
+    async def _render_style(self, data: dict[str, Any], manager: DialogManager) -> None:
+        return None
+
+    async def _render_emoji(self, data: dict[str, Any], manager: DialogManager) -> Optional[str]:
+        value: Any = data
+        for key in self._path:
+            value = value[key]
+        return value.icon_custom_emoji_id if isinstance(value, ButtonLabel) else None
+
+
+def label_with_icon(runner: TranslatorRunner, text_key: str, **kwargs: Any) -> ButtonLabel:
     """A label for a button the bot hardcodes rather than renders from config.
-    Those never reach ConfigKeyboard, so the icon has to be glued on here or it
+    Those never reach ConfigKeyboard, so the icon has to come along here or it
     would silently never show."""
     label = runner.get(text_key, **kwargs)
+    icon_id = _optional_translation(runner, catalog.icon_id_text_key(text_key))
     icon = _optional_translation(runner, catalog.icon_text_key(text_key))
-    return f"{icon} {label}" if icon else label
+    # same rule as ConfigKeyboard: the premium id wins over the glyph
+    text = f"{icon} {label}" if icon and not icon_id else label
+    return ButtonLabel(text=text, icon_custom_emoji_id=icon_id)
 
 
 async def render_dialog_buttons(

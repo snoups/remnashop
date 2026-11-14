@@ -108,6 +108,10 @@ export function iconIdTextKey(textKey: string): string {
   return `${textKey}-icon-id`;
 }
 
+export function isIconTextKey(key: string): boolean {
+  return key.endsWith("-icon") || key.endsWith("-icon-id");
+}
+
 export function windowTextKeys(window: DialogWindow): string[] {
   return [...window.text_keys, ...window.buttons.map((button) => button.text_key)];
 }

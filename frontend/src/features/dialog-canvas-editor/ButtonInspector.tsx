@@ -4,9 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 
 import {
-  iconIdTextKey,
   isLinkButton,
-  iconTextKey,
   splitTextKey,
   updateDialogText,
   urlProblem,
@@ -16,15 +14,12 @@ import {
 import type { DialogButtonItem, DialogCatalog } from "@entities/dialogs/api";
 import type { TranslationEntry } from "@entities/translations/api";
 import { TextEditorPanel } from "@features/dialog-canvas-editor/TextEditorPanel";
-import { getErrorMessage } from "@shared/api/http";
-import { toast } from "@shared/lib/toast";
-import { EmojiPicker, type PickedEmoji } from "@entities/emoji-packs/EmojiPicker";
+import { ButtonIconPicker } from "@features/dialog-canvas-editor/ButtonIconPicker";
 import { SelectDropdown } from "@shared/ui/SelectDropdown";
 import { InspectorDivider, InspectorHeader, SwitchRow } from "@features/dialog-canvas-editor/InspectorParts";
 import { Field } from "@shared/ui/glass/Field";
 import { Input } from "@shared/ui/glass/Input";
 import { SegmentedPills } from "@shared/ui/SegmentedPills";
-import { EmojiThumbnail } from "@features/dialog-canvas-editor/EmojiThumbnail";
 import { VariablePicker } from "@features/dialog-canvas-editor/VariablePicker";
 
 function describeUrlError(
@@ -83,44 +78,7 @@ export function ButtonInspector({
   const isTextSeeded = entries.some((e) => e.message_id === messageId);
   const urlError = describeUrlError(button, catalog.variable_keys, t);
 
-  const valueOf = (key: string): string => {
-    const { messageId: id, attributeId: attr } = splitTextKey(key);
-    return (
-      entries.find((e) => e.locale === activeLocale && e.message_id === id && e.attribute_id === attr)
-        ?.value ?? ""
-    );
-  };
-  // Only one of the two is ever filled: a glyph rides in the label text, a
-  // premium id goes to Telegram's icon field.
-  const iconGlyph = valueOf(iconTextKey(button.text_key));
   const urlFieldRef = useRef<HTMLInputElement>(null);
-  const iconId = valueOf(iconIdTextKey(button.text_key));
-
-  const writeIcon = async (key: string, value: string) => {
-    const { messageId: id, attributeId: attr } = splitTextKey(key);
-    const updated = await updateDialogText(activeLocale, id, attr, value);
-    onEntrySaved({
-      locale: updated.locale,
-      message_id: updated.message_id,
-      attribute_id: attr,
-      value: updated.value,
-      default_value: updated.default_value,
-    });
-  };
-
-  const handleIconPick = async (picked: PickedEmoji) => {
-    try {
-      if ("glyph" in picked) {
-        await writeIcon(iconTextKey(button.text_key), picked.glyph);
-        if (iconId) await writeIcon(iconIdTextKey(button.text_key), "");
-      } else {
-        await writeIcon(iconIdTextKey(button.text_key), picked.customEmojiId);
-        await writeIcon(iconTextKey(button.text_key), picked.fallback);
-      }
-    } catch (err) {
-      toast.error(getErrorMessage(err, t("common.errors.generic")));
-    }
-  };
 
   const insertIntoUrl = (token: string) => {
     const current = button.url_value ?? "";
@@ -151,11 +109,13 @@ export function ButtonInspector({
           onSaved={onEntrySaved}
           required
           fieldAction={
-            <EmojiPicker
-              current={iconId ? <EmojiThumbnail glyph={iconGlyph} customEmojiId={iconId} /> : iconGlyph || null}
+            <ButtonIconPicker
+              textKey={button.text_key}
+              entries={entries}
+              activeLocale={activeLocale}
               disabled={!canEditText}
-              onPick={(picked) => void handleIconPick(picked)}
-              onClear={() => void handleIconPick({ glyph: "" })}
+              save={updateDialogText}
+              onSaved={onEntrySaved}
             />
           }
         />

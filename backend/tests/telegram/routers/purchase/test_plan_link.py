@@ -195,6 +195,6 @@ async def test_link_choice_lists_only_subscriptions_on_that_plan() -> None:
     )
 
     assert [item["id"] for item in data["subscriptions"]] == [3]
-    assert data["subscriptions"][0]["label"] == "btn-purchase.link-renew-icon " + _get(
+    assert data["subscriptions"][0]["label"].text == "btn-purchase.link-renew-icon " + _get(
         "btn-purchase.link-renew", subscription="Plan 10 — 01.11.2026"
     )

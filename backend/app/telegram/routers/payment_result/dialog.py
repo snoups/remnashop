@@ -3,6 +3,7 @@ from aiogram_dialog import Dialog, StartMode, Window
 from aiogram_dialog.widgets.kbd import Button, Start, Url
 from aiogram_dialog.widgets.text import Format
 
+from app.telegram.dialogs.rendering import LabelIcon
 from app.telegram.routers.payment_result.getters import (
     canceled_getter,
     failed_getter,
@@ -13,14 +14,26 @@ from app.telegram.states import MainMenu, PaymentResult
 
 
 def _menu() -> Start:
-    return Start(Format("{menu_text}"), id="menu", state=MainMenu.MAIN, mode=StartMode.RESET_STACK)
+    return Start(
+        Format("{menu_text}"),
+        style=LabelIcon("menu_text"),
+        id="menu",
+        state=MainMenu.MAIN,
+        mode=StartMode.RESET_STACK,
+    )
 
 
 success = Window(
     Format("{window_text}"),
-    Url(Format("{connect_text}"), Format("{connect_url}"), when="connect_url"),
+    Url(
+        Format("{connect_text}"),
+        Format("{connect_url}"),
+        style=LabelIcon("connect_text"),
+        when="connect_url",
+    ),
     Button(
         Format("{subscription_text}"),
+        style=LabelIcon("subscription_text"),
         id="subscription",
         on_click=on_open_subscription,
         when="has_subscription",
@@ -41,7 +54,7 @@ failed = Window(
 
 canceled = Window(
     Format("{window_text}"),
-    Button(Format("{retry_text}"), id="retry", on_click=on_retry),
+    Button(Format("{retry_text}"), style=LabelIcon("retry_text"), id="retry", on_click=on_retry),
     _menu(),
     parse_mode=ParseMode.HTML,
     state=PaymentResult.CANCELED,

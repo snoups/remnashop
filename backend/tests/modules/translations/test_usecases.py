@@ -196,6 +196,63 @@ async def test_update_translation_raises_not_found_for_unknown_key(
         )
 
 
+def _update_use_case(
+    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
+    uow: UnitOfWork,
+    redis: Redis,
+) -> UpdateTranslationUseCase:
+    return UpdateTranslationUseCase(
+        translation_repository,
+        uow,
+        make_bot_commands_sync(settings_repository.session, uow),
+        RedisBotSignals(redis),
+        RecordingEventPublisher(),
+    )
+
+
+async def test_update_translation_creates_the_icon_of_an_existing_button_label(
+    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
+    uow: UnitOfWork,
+    redis: Redis,
+) -> None:
+    await _seed(settings_repository, translation_repository)
+    await translation_repository.seed_missing(Locale.EN, "btn-promocode", "cancel", "Cancel")
+    use_case = _update_use_case(settings_repository, translation_repository, uow, redis)
+
+    updated = await use_case(
+        OWNER,
+        UpdateTranslationDto(
+            locale=Locale.EN,
+            message_id="btn-promocode",
+            attribute_id="cancel-icon-id",
+            value="5368324170671202286",
+        ),
+    )
+
+    assert updated.value == "5368324170671202286"
+    assert updated.default_value == ""
+
+
+async def test_update_translation_refuses_an_icon_without_its_label(
+    settings_repository: SettingsRepository,
+    translation_repository: TranslationRepository,
+    uow: UnitOfWork,
+    redis: Redis,
+) -> None:
+    await _seed(settings_repository, translation_repository)
+    use_case = _update_use_case(settings_repository, translation_repository, uow, redis)
+
+    with pytest.raises(NotFoundError):
+        await use_case(
+            OWNER,
+            UpdateTranslationDto(
+                locale=Locale.EN, message_id="btn-promocode", attribute_id="cancel-icon", value="❌"
+            ),
+        )
+
+
 async def test_reset_translation_raises_not_found_for_unknown_key(
     settings_repository: SettingsRepository,
     translation_repository: TranslationRepository,

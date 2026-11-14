@@ -3,6 +3,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Final, Optional
 
+from app.core.constants import ICON_ID_KEY_SUFFIX, ICON_KEY_SUFFIX
 from app.core.enums import ButtonLinkType, ButtonStyleKind, DialogFlow
 
 Resolver = Callable[..., object]
@@ -33,13 +34,6 @@ CUSTOM_TEXT_KEY_PREFIX: Final[str] = "msg-dialog-custom-"
 # The key becomes a Fluent message id verbatim, so anything outside this would
 # let one button's label define or shadow another message in the locale.
 _CUSTOM_TEXT_KEY_SUFFIX_RE: Final[re.Pattern[str]] = re.compile(r"[a-z0-9-]+")
-
-# A button's icon is a translation of its own, so it can differ per locale and
-# never gets mixed into the label text. Exactly one of the two is ever filled:
-# the plain glyph goes into the button's text, the premium id into Telegram's
-# icon_custom_emoji_id.
-ICON_KEY_SUFFIX: Final[str] = "-icon"
-ICON_ID_KEY_SUFFIX: Final[str] = "-icon-id"
 
 # A custom window's body key is this prefix plus the window key.
 _WINDOW_TEXT_KEY_PREFIX: Final[str] = "msg-dialog-"

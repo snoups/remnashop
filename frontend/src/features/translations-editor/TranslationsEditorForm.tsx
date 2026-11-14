@@ -4,7 +4,8 @@ import { motion } from "motion/react";
 import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { iconIdTextKey, iconTextKey, listWindows, windowTextKeys } from "@entities/dialogs/api";
+import { iconIdTextKey, iconTextKey, isIconTextKey, listWindows, windowTextKeys } from "@entities/dialogs/api";
+import { ButtonIconPicker } from "@features/dialog-canvas-editor/ButtonIconPicker";
 import { InspectorDivider, InspectorHeader } from "@features/dialog-canvas-editor/InspectorParts";
 import { LocalesManager } from "@features/translations-editor/LocalesManager";
 import { Button } from "@shared/ui/Button";
@@ -61,6 +62,9 @@ function groupOf(messageId: string, withValue: Set<string>, withTitle: Set<strin
 
 const entryKey = (e: TranslationEntry) => (e.attribute_id ? `${e.message_id}.${e.attribute_id}` : e.message_id);
 
+/** Button labels of windows outside the canvas: their icon is picked beside the label, not edited as a row. */
+const isButtonLabelKey = (key: string) => key.startsWith("btn-") && !isIconTextKey(key);
+
 export function TranslationsEditorForm() {
   const { t, i18n } = useTranslation();
   const underlineId = useId();
@@ -106,7 +110,9 @@ export function TranslationsEditorForm() {
 
   const byGroup = new Map<string, TranslationEntry[]>();
   for (const entry of entries) {
-    if (entry.locale !== activeLocale || onCanvas.has(entryKey(entry))) continue;
+    const key = entryKey(entry);
+    if (entry.locale !== activeLocale || onCanvas.has(key)) continue;
+    if (key.startsWith("btn-") && isIconTextKey(key)) continue;
     const group = groupOf(entry.message_id, withValue, withTitle);
     byGroup.set(group, [...(byGroup.get(group) ?? []), entry]);
   }
@@ -361,6 +367,18 @@ export function TranslationsEditorForm() {
                   canReset={permissions.includes("TRANSLATIONS_RESET")}
                   save={updateTranslation}
                   onSaved={handleEntrySaved}
+                  fieldAction={
+                    isButtonLabelKey(selectedKey) ? (
+                      <ButtonIconPicker
+                        textKey={selectedKey}
+                        entries={entries}
+                        activeLocale={activeLocale}
+                        disabled={!permissions.includes("TRANSLATIONS_UPDATE")}
+                        save={updateTranslation}
+                        onSaved={handleEntrySaved}
+                      />
+                    ) : undefined
+                  }
                 />
                 {activeLocale !== SOURCE_LOCALE && englishValues.has(selectedKey) && (
                   <div className="flex flex-col gap-1 rounded-xl border border-dashed border-white/[0.12] px-3.5 py-2.5">

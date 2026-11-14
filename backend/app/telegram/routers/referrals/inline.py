@@ -1,6 +1,5 @@
 from aiogram import Bot, F, Router
 from aiogram.types import (
-    InlineKeyboardButton,
     InlineKeyboardMarkup,
     InlineQuery,
     InlineQueryResultArticle,
@@ -51,11 +50,7 @@ async def on_invite_query(
                 ),
                 reply_markup=InlineKeyboardMarkup(
                     inline_keyboard=[
-                        [
-                            InlineKeyboardButton(
-                                text=label_with_icon(runner, "inline-invite.start"), url=url
-                            )
-                        ]
+                        [label_with_icon(runner, "inline-invite.start").inline_button(url=url)]
                     ]
                 ),
             )
