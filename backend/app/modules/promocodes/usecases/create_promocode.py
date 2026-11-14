@@ -57,6 +57,25 @@ class CreatePromocodeUseCase(UseCase[CreatePromocodeDto, PromocodeDto]):
         logger.info(f"{actor.log} Created promocode '{promo.code}'")
         return promo
 
+    async def _validate_subscription_reward(self, data: CreatePromocodeDto) -> None:
+        if (
+            data.reward_plan_id is None
+            or data.reward_duration_days is None
+            # 0 grants an unlimited subscription
+            or data.reward_duration_days < 0
+        ):
+            raise ValidationError(
+                "reward_plan_id and a reward_duration_days of 0 or more are required "
+                "for reward type 'SUBSCRIPTION'",
+                code=ErrorCode.PROMOCODE_REWARD_PLAN_REQUIRED,
+            )
+        plan = await self._plan_repository.get_by_id(data.reward_plan_id)
+        if plan.is_trial and data.reward_duration_days == 0:
+            raise ValidationError(
+                "A trial plan can't be unlimited",
+                code=ErrorCode.PLAN_TRIAL_UNLIMITED_DURATION,
+            )
+
     async def _validate_reward(self, data: CreatePromocodeDto) -> None:
         if data.reward_type is PromocodeRewardType.DURATION:
             if data.reward is None or data.reward < 1:
@@ -77,18 +96,7 @@ class CreatePromocodeUseCase(UseCase[CreatePromocodeDto, PromocodeDto]):
                     code=ErrorCode.PROMOCODE_REWARD_ADDON_TYPE_MISMATCH,
                 )
         elif data.reward_type is PromocodeRewardType.SUBSCRIPTION:
-            if (
-                data.reward_plan_id is None
-                or data.reward_duration_days is None
-                # 0 grants an unlimited subscription
-                or data.reward_duration_days < 0
-            ):
-                raise ValidationError(
-                    "reward_plan_id and a reward_duration_days of 0 or more are required "
-                    "for reward type 'SUBSCRIPTION'",
-                    code=ErrorCode.PROMOCODE_REWARD_PLAN_REQUIRED,
-                )
-            await self._plan_repository.get_by_id(data.reward_plan_id)
+            await self._validate_subscription_reward(data)
         elif data.reward_type in (
             PromocodeRewardType.PERSONAL_DISCOUNT,
             PromocodeRewardType.PURCHASE_DISCOUNT,

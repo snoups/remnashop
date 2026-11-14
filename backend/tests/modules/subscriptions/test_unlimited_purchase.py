@@ -499,3 +499,118 @@ async def test_renewing_an_unlimited_turned_finite_does_not_unlock_its_payment(
 
     assert renewed.plan_snapshot.credit_paid == Decimal("500")
     assert renewed.plan_snapshot.credit_days == 30
+
+
+async def test_a_trial_plan_is_never_issued_unlimited(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    # an admin grant and a SUBSCRIPTION promocode both issue through a NEW purchase
+    buyer = await user_repository.create(CreateUserDto(name="trial", telegram_id=91013))
+    plan = await _plan(plan_repository, "trial-forever")
+    use_case = _use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(
+            buyer,
+            PurchaseSubscriptionDto(
+                user_id=buyer.id,
+                plan_snapshot=snapshot_from_plan(
+                    plan, currency=Currency.RUB, duration_days=0, is_trial=True
+                ),
+                duration_days=0,
+                price_paid=Decimal("0"),
+                currency=Currency.RUB,
+                purchase_type=PurchaseType.NEW,
+            ),
+        )
+
+    assert error.value.code is ErrorCode.PLAN_TRIAL_UNLIMITED_DURATION
+    assert len(remnawave_store) == 0
+
+
+async def test_a_paid_renewal_is_not_applied_once_the_panel_made_it_unlimited(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    # the panel already says 2099, the webhook carrying it hasn't arrived yet
+    buyer = await user_repository.create(CreateUserDto(name="ahead", telegram_id=91014))
+    plan = await _plan(plan_repository, "panel-ahead")
+    use_case = _use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    month = await _buy(use_case, buyer, plan, days=30, paid="500")
+    forever = datetime(2099, 1, 1, tzinfo=timezone.utc)
+    remnawave_store[month.remnawave_user_id]["expireAt"] = forever.isoformat()
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(
+            buyer,
+            PurchaseSubscriptionDto(
+                user_id=buyer.id,
+                plan_snapshot=snapshot_from_plan(
+                    plan, price_paid=Decimal("500"), currency=Currency.RUB, duration_days=30
+                ),
+                duration_days=30,
+                price_paid=Decimal("500"),
+                currency=Currency.RUB,
+                purchase_type=PurchaseType.RENEW,
+                target_subscription_id=month.id,
+                idempotency_key="panel-ahead-renew",
+            ),
+        )
+
+    assert error.value.code is ErrorCode.SUBSCRIPTION_UNLIMITED
+    assert _panel_expiry(remnawave_store, month) == forever
+
+
+async def test_an_unlimited_change_carries_the_credit_its_order_was_priced_with(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    # fulfilment keeps the number checkout took off the price, not a fresh one
+    buyer = await user_repository.create(CreateUserDto(name="priced", telegram_id=91015))
+    standard = await _plan(plan_repository, "priced-standard")
+    premium = await _plan(plan_repository, "priced-premium")
+    use_case = _use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    forever = await _buy(use_case, buyer, standard, days=0, paid="3000")
+
+    changed = await use_case(
+        buyer,
+        PurchaseSubscriptionDto(
+            user_id=buyer.id,
+            plan_snapshot=snapshot_from_plan(
+                premium, price_paid=Decimal("500"), currency=Currency.RUB, duration_days=0
+            ),
+            duration_days=0,
+            price_paid=Decimal("500"),
+            base_price=Decimal("3000"),
+            currency=Currency.RUB,
+            purchase_type=PurchaseType.CHANGE,
+            target_subscription_id=forever.id,
+            change_credit=Decimal("2500"),
+        ),
+    )
+
+    assert changed.plan_snapshot.credit_paid == Decimal("3000")

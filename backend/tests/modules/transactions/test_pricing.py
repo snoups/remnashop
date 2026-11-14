@@ -8,6 +8,7 @@ from app.core.enums import Currency, DiscountSource, PlanType, Role, RoundingMod
 from app.core.exceptions import ValidationError
 from app.core.utils.time import datetime_now
 from app.modules.plans.dto import PlanDto, PlanDurationDto, PlanPriceOverrideDto
+from app.modules.pricing import convert_for_report
 from app.modules.pricing.dto import CurrencyRateDto, CurrencyRateTable
 from app.modules.pricing.resolver import round_amount
 from app.modules.transactions.pricing import quote_price
@@ -390,3 +391,17 @@ def test_quote_change_credit_rounds_the_rest_to_the_currency() -> None:
     quote = quote_price(plan, 0, Currency.RUB, _user(), _rates(), change_credit=Decimal("3000.4"))
 
     assert quote.final_price == Decimal("2000")
+
+
+def test_quote_reports_the_credited_price_as_the_base_of_its_discounts() -> None:
+    # discount stats are base minus final: the credit isn't a discount
+    plan = _plan(base_price=Decimal("5000"), days=0)
+    rates = _rates()
+
+    quote = quote_price(
+        plan, 0, Currency.RUB, _user(loyalty_discount=10), rates, change_credit=Decimal("3000")
+    )
+
+    assert quote.anchor_base_price == convert_for_report(
+        Decimal("2000"), Currency.RUB, rates.anchor, rates
+    )

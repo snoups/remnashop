@@ -27,7 +27,7 @@ from app.modules.subscriptions.panel import (
     revert_panel_to_owner,
 )
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.subscriptions.unlimited import expiry_after
+from app.modules.subscriptions.unlimited import expiry_after, is_unlimited_expiry
 
 
 class RenewPurchase:
@@ -234,6 +234,12 @@ class RenewPurchase:
             pinned = await self._idempotency.find_pending_renew_expire_at(key)
         if pinned is None:
             panel_user = await self._remnawave_sdk.users.get_user_by_id(target.remnawave_user_id)
+            # made unlimited on the panel, its webhook not here yet
+            if is_unlimited_expiry(panel_user.expire_at):
+                raise ValidationError(
+                    "An unlimited subscription can't be renewed",
+                    code=ErrorCode.SUBSCRIPTION_UNLIMITED,
+                )
             base = max(panel_user.expire_at, datetime_now())
             # ms-truncated so the pinned value compares equal to the panel's
             pinned = truncate_to_ms(expiry_after(base, duration_days))

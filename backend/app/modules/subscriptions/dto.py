@@ -352,6 +352,9 @@ class PurchaseSubscriptionDto:
     # edited since the target was sold, its limits, strategy and squads; set for a
     # checkout order, whose snapshot is the plan as sold now, not the target's own
     apply_current_plan: bool = False
+    # CHANGE to unlimited: the old unlimited payment checkout took off the price;
+    # None for an order queued before it was stored, which credits it afresh
+    change_credit: Optional[Decimal] = None
 
 
 @dataclass(frozen=True, kw_only=True)

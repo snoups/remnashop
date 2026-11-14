@@ -14,6 +14,7 @@ class PurchaseSubscriptionDispatch(Protocol):
         target_subscription_id: Optional[int] = None,
         base_price: Optional[str] = None,
         idempotency_key: Optional[str] = None,
+        change_credit: Optional[str] = None,
     ) -> object: ...
 
 

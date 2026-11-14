@@ -37,6 +37,7 @@ async def purchase_subscription_task(
     target_subscription_id: Optional[int] = None,
     base_price: Optional[str] = None,
     idempotency_key: Optional[str] = None,
+    change_credit: Optional[str] = None,
 ) -> None:
     await use_case.system(
         PurchaseSubscriptionDto(
@@ -52,6 +53,7 @@ async def purchase_subscription_task(
             # every queued purchase is a customer's order
             reset_traffic=True,
             apply_current_plan=True,
+            change_credit=Decimal(change_credit) if change_credit is not None else None,
         )
     )
 

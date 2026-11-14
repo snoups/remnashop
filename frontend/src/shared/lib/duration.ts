@@ -10,7 +10,7 @@ export function isUnlimitedExpiry(iso: string): boolean {
 /** An expiry to set for "no end date": today's date in that year. */
 export function unlimitedExpiry(): string {
   const date = new Date();
-  date.setFullYear(UNLIMITED_EXPIRE_YEAR);
+  date.setUTCFullYear(UNLIMITED_EXPIRE_YEAR);
   return date.toISOString();
 }
 

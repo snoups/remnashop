@@ -13,6 +13,7 @@ async def dispatch_fulfillment(
         duration_days=order.duration_days,
         price_paid=str(order.final_price),
         base_price=str(order.base_price),
+        change_credit=str(order.change_credit),
         currency=order.currency.value,
         purchase_type=order.purchase_type.value,
         target_subscription_id=order.target_subscription_id,

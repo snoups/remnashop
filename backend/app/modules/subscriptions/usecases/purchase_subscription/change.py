@@ -190,15 +190,17 @@ class ChangePurchase:
             final_expire_at = expiry_after(datetime_now(), 0)
             # checkout took what an unlimited one was paid off the price; carried
             # on, so the next change to unlimited credits all of it again
-            carried = (
-                await self._convert(
-                    old.plan_snapshot.effective_credit_paid,
-                    old.plan_snapshot.currency,
-                    plan.currency,
+            carried = data.change_credit
+            if carried is None:
+                carried = (
+                    await self._convert(
+                        old.plan_snapshot.effective_credit_paid,
+                        old.plan_snapshot.currency,
+                        plan.currency,
+                    )
+                    if old.is_unlimited and not old.is_trial
+                    else ZERO_AMOUNT
                 )
-                if old.is_unlimited and not old.is_trial
-                else ZERO_AMOUNT
-            )
             plan = replace(plan, credit_paid=plan.price_paid + carried, credit_days=0)
         else:
             now = datetime_now()

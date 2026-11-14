@@ -258,6 +258,42 @@ async def test_create_subscription_promocode_requires_duration(
         )
 
 
+async def test_create_subscription_promocode_refuses_an_unlimited_trial(
+    promocode_repository: PromocodeRepository, uow, event_publisher
+) -> None:
+    plan_repository = PlanRepository(promocode_repository.session)
+    trial = await plan_repository.create(
+        CreatePlanDto(
+            public_code="promo-trial",
+            name="Promo Trial",
+            type=PlanType.BOTH,
+            traffic_limit=100,
+            device_limit=3,
+            is_trial=True,
+        )
+    )
+    use_case = CreatePromocodeUseCase(
+        promocode_repository,
+        AddOnRepository(promocode_repository.session),
+        plan_repository,
+        uow,
+        event_publisher,
+    )
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(
+            OWNER,
+            CreatePromocodeDto(
+                code="FOREVERTRIAL",
+                reward_type=PromocodeRewardType.SUBSCRIPTION,
+                reward_plan_id=trial.id,
+                reward_duration_days=0,
+            ),
+        )
+
+    assert error.value.code is ErrorCode.PLAN_TRIAL_UNLIMITED_DURATION
+
+
 async def test_update_promocode_deactivates(
     promocode_repository: PromocodeRepository, uow, event_publisher
 ) -> None:

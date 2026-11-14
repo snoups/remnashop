@@ -81,7 +81,8 @@ def quote_price(
         discount_percent=discount_percent,
         discount_source=discount_source,
         final_price=final_price,
-        anchor_base_price=convert_for_report(base_price, currency, rates.anchor, rates),
+        # the credit isn't a discount: reports take discounts off what was left to pay
+        anchor_base_price=convert_for_report(payable, currency, rates.anchor, rates),
         anchor_final_price=convert_for_report(final_price, currency, rates.anchor, rates),
         discount_promocode_id=discount_promocode_id,
         plan_discount_percent=plan_discount_percent,
