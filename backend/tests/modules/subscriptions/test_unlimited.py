@@ -3,6 +3,8 @@ from decimal import Decimal
 
 import pytest
 
+from app.core.enums import PlanType
+from app.modules.plans.dto import PlanDto, PlanDurationDto
 from app.modules.subscriptions.dto import PlanSnapshot
 from app.modules.subscriptions.unlimited import expiry_after, is_unlimited_expiry
 from tests.modules.subscriptions.factories import make_plan_snapshot, make_subscription_dto
@@ -69,3 +71,18 @@ def test_subscription_dto_is_unlimited() -> None:
     assert not make_subscription_dto(
         expire_at=datetime(2027, 3, 1, tzinfo=timezone.utc)
     ).is_unlimited
+
+
+def test_a_trial_never_offers_an_unlimited_duration() -> None:
+    trial = PlanDto(
+        public_code="trial",
+        name="Trial",
+        type=PlanType.BOTH,
+        traffic_limit=1,
+        device_limit=1,
+        is_trial=True,
+        durations=[PlanDurationDto(id=1, days=0, base_price=Decimal("0"))],
+    )
+
+    assert trial.sellable_durations() == []
+    assert trial.free_trial_duration() is None

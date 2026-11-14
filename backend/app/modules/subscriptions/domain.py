@@ -13,6 +13,7 @@ from app.core.enums import SubscriptionStatus
 from app.core.error_codes import ErrorCode
 from app.core.exceptions import ValidationError
 from app.modules.subscriptions.dto import PlanSnapshot
+from app.modules.subscriptions.unlimited import is_unlimited_expiry
 
 
 class SupersededError(ValidationError):
@@ -230,7 +231,8 @@ def calculate_proration_credit(
 ) -> Decimal:
     """Proration credit from the old subscription's fields alone, so ChangePurchase
     knows the new expire_at before touching the panel."""
-    if is_trial or credit_paid <= 0 or credit_days <= 0:
+    # an unlimited term has no remaining days to credit, whatever credit it still carries
+    if is_trial or credit_paid <= 0 or credit_days <= 0 or is_unlimited_expiry(expire_at):
         return Decimal("0")
     remaining_days = max(0, (expire_at - now).days)
     credit = min(credit_paid / Decimal(credit_days) * Decimal(remaining_days), credit_paid)

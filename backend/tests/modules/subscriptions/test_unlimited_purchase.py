@@ -384,3 +384,40 @@ async def test_change_unlimited_to_finite_has_zero_credit(
     assert not changed.is_unlimited
     assert changed.expire_at - datetime_now() < timedelta(days=30, minutes=1)
     assert changed.plan_snapshot.credit_days == 30
+
+
+async def test_a_subscription_made_unlimited_by_hand_changes_to_finite_without_credit(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+) -> None:
+    buyer = await user_repository.create(CreateUserDto(name="by-hand", telegram_id=91009))
+    month_plan = await _plan(plan_repository, "by-hand-month")
+    other_plan = await _plan(plan_repository, "by-hand-other")
+    use_case = _use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    month = await _buy(use_case, buyer, month_plan, days=30, paid="500")
+    forever = datetime(2099, 1, 1, tzinfo=timezone.utc)
+    await subscription_repository.update(
+        UpdateSubscriptionDto(subscription_id=month.id, expire_at=forever)
+    )
+    remnawave_store[month.remnawave_user_id]["expireAt"] = forever.isoformat()
+
+    changed = await _buy(
+        use_case,
+        buyer,
+        other_plan,
+        days=30,
+        paid="500",
+        purchase_type=PurchaseType.CHANGE,
+        target_subscription_id=month.id,
+    )
+
+    assert changed.plan_snapshot.credit_days == 30
+    assert changed.expire_at - datetime_now() < timedelta(days=30, minutes=1)
