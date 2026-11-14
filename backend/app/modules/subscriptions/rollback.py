@@ -46,6 +46,13 @@ async def _rollback_blocker(
         return None
     if fulfilled.status is SubscriptionStatus.DELETED:
         return "subscription_deleted"
+    if (
+        data.purchase_type is PurchaseType.RENEW
+        and data.duration_days == 0
+        and not fulfilled.is_unlimited
+    ):
+        # given a date since: the term it replaced would drop what came after
+        return "renewed_or_changed_later"
     if data.purchase_type is PurchaseType.NEW and data.has_later_paid_order:
         return "renewed_or_changed_later"
     return None

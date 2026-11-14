@@ -25,7 +25,7 @@ from app.modules.subscriptions.panel import (
     subscription_row,
 )
 from app.modules.subscriptions.repository import SubscriptionRepository
-from app.modules.subscriptions.unlimited import expiry_after
+from app.modules.subscriptions.unlimited import assert_not_unlimited_trial, expiry_after
 from app.modules.users import UserRepository
 
 
@@ -57,7 +57,7 @@ class NewPurchase:
         self._prefix = config.remnawave.username_prefix
 
     async def run(self, actor: Actor, data: PurchaseSubscriptionDto) -> SubscriptionDto:
-        _assert_not_unlimited_trial(data)
+        assert_not_unlimited_trial(data.plan_snapshot.is_trial, data.duration_days == 0)
         async with self._uow:
             if data.target_subscription_id is not None:
                 raise ValidationError(
@@ -250,12 +250,4 @@ class NewPurchase:
                 payment_key=data.idempotency_key,
                 is_trial=data.plan_snapshot.is_trial,
             )
-        )
-
-
-def _assert_not_unlimited_trial(data: PurchaseSubscriptionDto) -> None:
-    # an admin grant or a promocode reaches here with any duration
-    if data.plan_snapshot.is_trial and data.duration_days == 0:
-        raise ValidationError(
-            "A trial plan can't be unlimited", code=ErrorCode.PLAN_TRIAL_UNLIMITED_DURATION
         )

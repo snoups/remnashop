@@ -363,12 +363,14 @@ def _plan_type(traffic_limit: int, device_limit: int) -> str:
 def _plan_values(card: _Card, plan: dict[str, Any]) -> list[str]:
     traffic, devices = int(plan.get("traffic_limit") or 0), int(plan.get("device_limit") or 0)
     duration = plan.get("duration_days")
+    # a panel import (plan 0) stores 0 days with no term known
+    known = isinstance(duration, int) and plan.get("plan_id") != 0
     return [
         str(plan.get("name") or ""),
         card.value("plan-type", _plan_type(traffic, devices)),
         card.traffic_limit(traffic),
         card.count_limit(devices),
-        card.term(duration if isinstance(duration, int) else None),
+        card.term(duration if known else None),
     ]
 
 

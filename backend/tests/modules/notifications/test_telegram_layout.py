@@ -355,3 +355,33 @@ def test_traffic_starts_at_megabytes(size: int, shown: str) -> None:
         notes="",
     )
     assert f"• <b>Трафик</b>: {shown} / 100 ГБ" in card
+
+
+def test_a_change_from_a_panel_import_shows_no_old_term() -> None:
+    # an import stores 0 days with no term known, which isn't "forever"
+    renderer = _renderer(Locale.RU)
+    previous = {
+        "plan_id": 0,
+        "name": "Импорт",
+        "traffic_limit": 0,
+        "device_limit": 3,
+        "duration_days": 0,
+    }
+    payload = {**_PAYLOAD, "previous_plan_snapshot": previous}
+    args = notification_args(payload, None)
+    title, body = renderer.render(Locale.RU, "SubscriptionChangedEvent", args)
+
+    card = build_telegram_card(
+        renderer,
+        Locale.RU,
+        event_type="SubscriptionChangedEvent",
+        payload=payload,
+        args=args,
+        data=_data(),
+        build=_BUILD,
+        title=title,
+        body=body,
+        notes="",
+    )
+
+    assert "• <b>Длительность</b>: 30 дней</blockquote>" in card

@@ -46,7 +46,7 @@ def _original_price(data: dict[str, Any]) -> str:
     # empty without a discount: the confirm text drops the line
     currency = data["currency"]
     base = data.get("base_prices", {}).get(currency)
-    if base is None or Decimal(base) == Decimal(data["prices"][currency]):
+    if base is None or Decimal(base) <= Decimal(data["prices"][currency]):
         return ""
     return format_price(Decimal(base))
 

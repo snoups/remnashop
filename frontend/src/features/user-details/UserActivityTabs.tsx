@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import type { ParseKeys, TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 
-import { PAYMENT_STATUS_BADGE_TONE, PURCHASE_TYPES, getTransactionSummary, listTransactions, listTransactionsAfter, type TransactionItem } from "@entities/transactions/api";
+import { PAYMENT_STATUS_BADGE_TONE, PURCHASE_TYPES, getTransactionSummary, hasDiscount, listTransactions, listTransactionsAfter, type TransactionItem } from "@entities/transactions/api";
 import { listUserPromocodeActivations, type UserPromocodeActivation } from "@entities/promocodes/api";
 import { getUserReferralStats } from "@entities/referrals/api";
 import { SUBSCRIPTION_STATUS_BADGE_TONE, listSubscriptions } from "@entities/subscriptions/api";
@@ -68,7 +68,8 @@ function PurchaseKpis({ orders, total, saved }: { orders: TransactionItem[]; tot
   const byType = PURCHASE_TYPES.map((type) => ({ type, count: paid.filter((o) => o.purchase_type === type).length })).filter(
     ({ count }) => count > 0,
   );
-  const discounted = paid.filter((order) => Number(order.base_price) > Number(order.final_price));
+  // by the discounts themselves: a plan change's credit also lowers the price and isn't one
+  const discounted = paid.filter(hasDiscount);
   const gatewayCounts = new Map<string, number>();
   for (const order of paid) gatewayCounts.set(order.gateway_type, (gatewayCounts.get(order.gateway_type) ?? 0) + 1);
   const [topGateway, topGatewayCount] = [...gatewayCounts].sort((a, b) => b[1] - a[1])[0] ?? [];

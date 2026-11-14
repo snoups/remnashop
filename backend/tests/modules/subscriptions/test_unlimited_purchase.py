@@ -614,3 +614,46 @@ async def test_an_unlimited_change_carries_the_credit_its_order_was_priced_with(
     )
 
     assert changed.plan_snapshot.credit_paid == Decimal("3000")
+
+
+@pytest.mark.parametrize("keep_expire_at", [False, True])
+async def test_a_change_never_makes_a_trial_unlimited(
+    plan_repository: PlanRepository,
+    subscription_repository: SubscriptionRepository,
+    user_repository: UserRepository,
+    remnawave_sdk: RemnawaveSDK,
+    remnawave_store: FakeUserStore,
+    uow: UnitOfWork,
+    event_publisher: EventPublisher,
+    idempotency_repository: PurchaseIdempotencyRepository,
+    keep_expire_at: bool,
+) -> None:
+    # an admin's plan change: 0 days, or keeping an unlimited subscription's 2099
+    buyer = await user_repository.create(
+        CreateUserDto(name="to-trial", telegram_id=91016 + int(keep_expire_at))
+    )
+    plan = await _plan(plan_repository, f"change-to-trial-{keep_expire_at}")
+    use_case = _use_case(
+        subscription_repository, remnawave_sdk, uow, event_publisher, idempotency_repository
+    )
+    forever = await _buy(use_case, buyer, plan, days=0, paid="5000")
+
+    with pytest.raises(ValidationError) as error:
+        await use_case(
+            buyer,
+            PurchaseSubscriptionDto(
+                user_id=buyer.id,
+                plan_snapshot=snapshot_from_plan(
+                    plan, currency=Currency.RUB, duration_days=0, is_trial=True
+                ),
+                duration_days=0,
+                price_paid=Decimal("0"),
+                currency=Currency.RUB,
+                purchase_type=PurchaseType.CHANGE,
+                target_subscription_id=forever.id,
+                keep_expire_at=keep_expire_at,
+            ),
+        )
+
+    assert error.value.code is ErrorCode.PLAN_TRIAL_UNLIMITED_DURATION
+    assert not (await subscription_repository.get_by_id(forever.id)).is_trial

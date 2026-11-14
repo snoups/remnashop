@@ -697,3 +697,31 @@ async def test_set_matrix_prices_requires_the_permission_of_each_edit(
                 plan_base_prices=[], plan_overrides=[], addon_base_prices=[], addon_overrides=[]
             ),
         )
+
+
+async def test_update_plan_saves_other_edits_of_a_migrated_unlimited_trial(
+    plan_repository: PlanRepository, uow: UnitOfWork, event_publisher: EventPublisher
+) -> None:
+    # the migration report says to replace the duration; renaming meanwhile must still save
+    created = await plan_repository.create(
+        CreatePlanDto(
+            public_code="old-trial",
+            name="Old trial",
+            type=PlanType.BOTH,
+            traffic_limit=1,
+            device_limit=1,
+            is_trial=True,
+        )
+    )
+    await plan_repository.set_durations(
+        SetPlanDurationsDto(
+            plan_id=created.id,
+            durations=[SetPlanDurationDto(days=0, order_index=0, base_price=Decimal("0"))],
+        )
+    )
+
+    plan = await UpdatePlanUseCase(plan_repository, uow, event_publisher)(
+        OWNER, UpdatePlanDto(plan_id=created.id, name="Trial")
+    )
+
+    assert plan.name == "Trial"

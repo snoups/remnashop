@@ -539,3 +539,31 @@ async def test_refund_of_a_finite_renewal_under_a_later_unlimited_one_keeps_it_u
     restored = await subscription_repository.get_by_id(bought.id)
     assert restored.expire_at == bought.expire_at
     assert restored.plan_snapshot.effective_credit_paid == Decimal("300")
+
+
+async def test_refund_of_an_unlimited_renewal_made_finite_since_is_blocked(
+    purchase: PurchaseSubscriptionUseCase,
+    service: PurchaseRollbackService,
+    plan_repository: PlanRepository,
+    user_repository: UserRepository,
+    subscription_repository: SubscriptionRepository,
+    remnawave_store: FakeUserStore,
+) -> None:
+    # the term it replaced is stale: putting it back would drop what came after
+    buyer = await _buyer(user_repository, 9133)
+    plan = await _plan(plan_repository, "rb_forever_made_finite")
+    bought = await _buy(purchase, buyer, plan, PurchaseType.NEW)
+    forever = await _renew_unlimited(purchase, buyer, plan, bought.id)
+    finite = datetime_now() + timedelta(days=200)
+    await subscription_repository.session.execute(
+        update(Subscription).where(Subscription.id == forever.id).values(expire_at=finite)
+    )
+    remnawave_store[forever.remnawave_user_id]["expireAt"] = finite.isoformat()
+    data = _unlimited_data(forever.id, forever.id)
+
+    preview = await service.preview(data)
+    with pytest.raises(ConflictError):
+        await service.rollback(OWNER, data)
+
+    assert preview.blocked_reason == "renewed_or_changed_later"
+    assert (await subscription_repository.get_by_id(forever.id)).expire_at == finite

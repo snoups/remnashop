@@ -25,7 +25,8 @@ class UpdatePlanUseCase(UseCase[UpdatePlanDto, PlanDto]):
     async def _execute(self, actor: Actor, data: UpdatePlanDto) -> PlanDto:
         async with self._uow:
             plan = await self._plan_repository.update(data)
-            if plan.is_trial and any(duration.days == 0 for duration in plan.durations):
+            # only turning it into a trial: a migrated one must still take other edits
+            if data.is_trial and any(duration.days == 0 for duration in plan.durations):
                 raise ValidationError(
                     "A trial plan can't be unlimited",
                     code=ErrorCode.PLAN_TRIAL_UNLIMITED_DURATION,

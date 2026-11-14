@@ -156,11 +156,17 @@ function TransactionDetailsDialogBody({
 
   // what an unlimited subscription changed to another unlimited plan took off the price
   const hasCredit = Number(order.change_credit) > 0;
-  const plan = `${order.plan_snapshot.name} · ${formatDuration(order.duration_days, t)}`;
+  // a test payment buys no term, and its 0 isn't "forever"
+  const period = order.is_test ? none : formatDuration(order.duration_days, t);
+  const plan = order.is_test ? order.plan_snapshot.name : `${order.plan_snapshot.name} · ${period}`;
   const previous = order.previous_plan_snapshot;
+  // a panel import (plan 0) stores 0 days with no term known
   const previousPlan =
     previous &&
-    [previous.name, previous.duration_days !== undefined && formatDuration(previous.duration_days, t)]
+    [
+      previous.name,
+      previous.duration_days !== undefined && previous.plan_id !== 0 && formatDuration(previous.duration_days, t),
+    ]
       .filter(Boolean)
       .join(" · ");
   const purchaseType = t(`transactions.purchaseType.${order.purchase_type}`);
@@ -207,7 +213,7 @@ function TransactionDetailsDialogBody({
                   : t("transactions.details.noDiscount")
               }
             />
-            <KpiTile glass label={t("transactions.details.period")} value={formatDuration(order.duration_days, t)} hint={purchaseType} />
+            <KpiTile glass label={t("transactions.details.period")} value={period} hint={purchaseType} />
           </div>
 
           <DialogCard title={t("transactions.details.sections.payment")} icon={Wallet}>

@@ -87,8 +87,12 @@ def _manager(start_data: object = None, dialog_data: Optional[dict] = None) -> A
     return manager
 
 
-def _quote(final: str = "199", base: str = "199") -> AsyncMock:
-    return AsyncMock(return_value=MagicMock(final_price=Decimal(final), base_price=Decimal(base)))
+def _quote(final: str = "199", base: str = "199", credit: str = "0") -> AsyncMock:
+    return AsyncMock(
+        return_value=MagicMock(
+            final_price=Decimal(final), base_price=Decimal(base), change_credit=Decimal(credit)
+        )
+    )
 
 
 _quote_checkout = _quote
@@ -731,6 +735,16 @@ async def test_duration_stores_the_price_checkout_will_charge() -> None:
 
     assert manager.dialog_data["prices"] == {"RUB": "159.2"}
     assert manager.dialog_data["base_prices"] == {"RUB": "199"}
+
+
+async def test_a_change_credit_is_not_shown_as_a_discount() -> None:
+    # unlimited to unlimited: 5000 less the 3000 already paid, no discount on top
+    manager = _manager(dialog_data={"plan_id": 10})
+    catalog_dto = PlanCatalogDto(plans=[_plan(id=10)], anchor_currency=Currency.RUB)
+
+    await select_duration(manager, catalog_dto, 30, [_RUB_METHOD], _quote("2000", "5000", "3000"))
+
+    assert manager.dialog_data["base_prices"] == {"RUB": "2000"}
 
 
 async def test_a_refused_quote_answers_an_alert() -> None:

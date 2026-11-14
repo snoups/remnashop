@@ -2,6 +2,9 @@ from calendar import monthrange
 from datetime import datetime, timedelta
 from typing import Final
 
+from app.core.error_codes import ErrorCode
+from app.core.exceptions import ValidationError
+
 # the panel needs a date; this one reads as "forever" and matches subscriptions
 # migrated from the old version
 UNLIMITED_EXPIRE_YEAR: Final[int] = 2099
@@ -19,3 +22,11 @@ def expiry_after(start: datetime, days: int) -> datetime:
 
 def is_unlimited_expiry(expire_at: datetime) -> bool:
     return expire_at.year >= UNLIMITED_EXPIRE_YEAR
+
+
+def assert_not_unlimited_trial(is_trial: bool, unlimited: bool) -> None:
+    # a grant, a promocode or an admin's plan change can ask for any term
+    if is_trial and unlimited:
+        raise ValidationError(
+            "A trial plan can't be unlimited", code=ErrorCode.PLAN_TRIAL_UNLIMITED_DURATION
+        )

@@ -867,6 +867,19 @@ async def test_sum_active_mrr_by_currency_normalizes_to_30_days_and_skips_inacti
             duration_days=unlimited_days,
         )
 
+    # renewed into unlimited: the snapshot keeps its finite term, the expiry says forever
+    await create_subscription(
+        subscription_repository,
+        user_repository,
+        telegram_id=825_006,
+        remnawave_user_id=825_006,
+        status=SubscriptionStatus.ACTIVE,
+        price_paid=Decimal("300"),
+        currency=Currency.RUB,
+        duration_days=30,
+        expire_at=datetime(2099, 6, 1, tzinfo=timezone.utc),
+    )
+
     result = await subscription_stats_repository.sum_active_mrr_by_currency()
 
     assert result == {Currency.RUB: Decimal("360")}

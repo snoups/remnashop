@@ -72,7 +72,10 @@ class TelegramStarsGateway(PaymentGateway[StarsRuntimeSettings]):
         link = await self._call(
             "createInvoiceLink",
             title=name[:_TITLE_MAX],
-            description=f"{name}, {order_period_text(order.duration_days)}",
+            # a test payment buys no term
+            description=name
+            if order.is_test
+            else f"{name}, {order_period_text(order.duration_days)}",
             payload=order.idempotency_key,
             currency=Currency.XTR.value,
             prices=[{"label": Currency.XTR.value, "amount": stars_amount(order)}],

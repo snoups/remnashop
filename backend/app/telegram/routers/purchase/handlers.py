@@ -236,9 +236,10 @@ async def select_duration(
     data["plan_name"] = plan.name
     data["plan_icon_id"] = plan.icon_emoji_id
     data["plan_icon_fallback"] = plan.icon_emoji_fallback
-    # what checkout charges, and the price before discounts beside it
+    # what checkout charges, and the price before discounts beside it: a plan
+    # change's credit comes off first and isn't a discount
     data["prices"] = {c.value: str(q.final_price) for c, q in quotes.items()}
-    data["base_prices"] = {c.value: str(q.base_price) for c, q in quotes.items()}
+    data["base_prices"] = {c.value: str(q.base_price - q.change_credit) for c, q in quotes.items()}
     # the same discount whatever the currency
     first = quotes[methods[0].currency]
     data["discount_percent"] = first.discount_percent
