@@ -15,6 +15,10 @@ interface PremiumEmojiProps {
   item: EmojiPackItem | undefined;
   /** Rendered size in px; the source artwork is always 512x512. */
   size: number;
+  /** A cell of a pack's grid: the thumbnail at rest, animated only while the
+   * pointer is over the cell. Dozens of lottie scenes on screen at once drop
+   * the page to 30fps and below. */
+  still?: boolean;
 }
 
 // an animation starts a little before its cell scrolls into view
@@ -24,9 +28,9 @@ const IN_VIEW_MARGIN = "64px";
  * static thumbnail off screen, while it loads, or for a pack imported before
  * animations were stored, and the plain glyph as the last resort. A pack holds
  * up to a thousand emoji: animating them all at once stalls the page. */
-export function PremiumEmoji({ item, size }: PremiumEmojiProps) {
+export function PremiumEmoji({ item, size, still = false }: PremiumEmojiProps) {
   const [failed, setFailed] = useState(false);
-  const [inView, setInView] = useState(false);
+  const [playing, setPlaying] = useState(false);
   const [animationReady, setAnimationReady] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const container = useRef<HTMLDivElement>(null);
@@ -35,18 +39,31 @@ export function PremiumEmoji({ item, size }: PremiumEmojiProps) {
   const emojiId = item?.custom_emoji_id;
 
   useEffect(() => {
-    if (!isAnimated || box.current === null) return;
+    const cell = box.current?.parentElement;
+    if (!isAnimated || !still || !cell) return;
+    const start = () => setPlaying(true);
+    const stop = () => setPlaying(false);
+    cell.addEventListener("pointerenter", start);
+    cell.addEventListener("pointerleave", stop);
+    return () => {
+      cell.removeEventListener("pointerenter", start);
+      cell.removeEventListener("pointerleave", stop);
+    };
+  }, [isAnimated, still]);
+
+  useEffect(() => {
+    if (!isAnimated || still || box.current === null) return;
     // the observer honours overflow clipping, so a cell scrolled out of a
     // popover or dialog counts as hidden
-    const observer = new IntersectionObserver(([entry]) => setInView(entry.isIntersecting), {
+    const observer = new IntersectionObserver(([entry]) => setPlaying(entry.isIntersecting), {
       rootMargin: IN_VIEW_MARGIN,
     });
     observer.observe(box.current);
     return () => observer.disconnect();
-  }, [isAnimated]);
+  }, [isAnimated, still]);
 
   useEffect(() => {
-    if (!emojiId || !isLottie || !inView || container.current === null) return;
+    if (!emojiId || !isLottie || !playing || container.current === null) return;
     const animation = lottie.loadAnimation({
       container: container.current,
       renderer: "canvas",
@@ -66,7 +83,7 @@ export function PremiumEmoji({ item, size }: PremiumEmojiProps) {
       animation.destroy();
       setAnimationReady(false);
     };
-  }, [isLottie, emojiId, inView]);
+  }, [isLottie, emojiId, playing]);
 
   if (!item) return <Smile className="text-muted-foreground" style={{ width: size, height: size }} />;
   const lucide = LUCIDE_PACK_ICONS[item.custom_emoji_id];
@@ -92,7 +109,7 @@ export function PremiumEmoji({ item, size }: PremiumEmojiProps) {
     <div ref={box} className="relative flex items-center justify-center" style={{ width: size, height: size }}>
       {/* lottie empties its container on destroy: it gets one React never renders into */}
       {isLottie && <div ref={container} className="absolute inset-0" />}
-      {!isLottie && inView ? (
+      {!isLottie && playing ? (
         <video
           src={emojiAnimationUrl(item.custom_emoji_id)}
           autoPlay

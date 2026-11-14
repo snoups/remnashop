@@ -62,7 +62,7 @@ export function PlanIconPickerBody({ value, onChange }: { value: PlanIconValue; 
                 }
                 className={CELL_CLASS}
               >
-                <PremiumEmoji item={item} size={22} />
+                <PremiumEmoji item={item} size={22} still />
               </Pressable>
             ))}
           </div>
